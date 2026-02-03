@@ -22,11 +22,10 @@ const { initializeAdmin } = require('./controllers/adminAuthController');
 
 const app = express();
 
-// Connect to database
-connectDB();
+connectDB().then(() => {
+  initializeAdmin();
+});
 
-// Initialize default admin
-initializeAdmin();
 
 // Middleware
 app.use(cors({
