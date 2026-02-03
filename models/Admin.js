@@ -8,14 +8,15 @@ const adminSchema = new mongoose.Schema({
     unique: true,
     lowercase: true
   },
+
   password: {
     type: String,
     required: true
   },
 
-  // 👇 ADD THIS
-  resetToken: String,
-  resetTokenExpiry: Date,
+  // ✅ Password reset fields (ONLY THESE TWO)
+  resetPasswordToken: String,
+  resetPasswordExpire: Date,
 
   createdAt: {
     type: Date,
@@ -23,14 +24,14 @@ const adminSchema = new mongoose.Schema({
   }
 });
 
-// Hash password
+// ================= PASSWORD HASH =================
 adminSchema.pre('save', async function (next) {
   if (!this.isModified('password')) return next();
   this.password = await bcrypt.hash(this.password, 10);
   next();
 });
 
-// Compare password
+// ================= PASSWORD COMPARE =================
 adminSchema.methods.comparePassword = function (password) {
   return bcrypt.compare(password, this.password);
 };
