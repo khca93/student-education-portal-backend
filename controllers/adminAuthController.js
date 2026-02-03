@@ -39,7 +39,24 @@ const initializeAdmin = async () => {
 // Admin Login
 const login = async (req, res) => {
   try {
+
+    // ✅ VALIDATION RESULT HANDLE
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({
+        success: false,
+        errors: errors.array()
+      });
+    }
+
     const { email, password } = req.body;
+
+    if (!email || !password) {
+      return res.status(400).json({
+        success: false,
+        message: 'Email and password required'
+      });
+    }
 
     const admin = await Admin.findOne({ email });
     if (!admin) {
@@ -65,7 +82,7 @@ const login = async (req, res) => {
     });
 
   } catch (err) {
-    console.error(err);
+    console.error('LOGIN ERROR:', err);
     res.status(500).json({
       success: false,
       message: 'Server error'
