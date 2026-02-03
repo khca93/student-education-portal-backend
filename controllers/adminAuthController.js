@@ -4,9 +4,13 @@ const { validationResult } = require('express-validator');
 
 // Generate JWT
 const generateToken = (id) => {
-  return jwt.sign({ id, role: 'admin' }, process.env.JWT_SECRET, {
-    expiresIn: process.env.JWT_EXPIRE
-  });
+  const expiresIn = process.env.JWT_EXPIRE || '7d'; // fallback
+
+  return jwt.sign(
+    { id, role: 'admin' },
+    process.env.JWT_SECRET,
+    { expiresIn }
+  );
 };
 
 // Initialize default admin (run once)
