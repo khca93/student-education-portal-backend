@@ -46,6 +46,7 @@ app.use('/api/student/auth', studentAuthRoutes);
 app.use('/api/admin/auth', adminAuthRoutes);
 app.use('/api/jobs', jobRoutes);
 app.use('/api/exam-papers', examPaperRoutes);
+
 // Root route (IMPORTANT for Render / Browser check)
 app.get('/', (req, res) => {
   res.json({

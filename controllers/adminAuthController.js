@@ -12,33 +12,34 @@ const generateToken = (id) => {
 // Initialize default admin (run once)
 const initializeAdmin = async () => {
   try {
-    const count = await Admin.countDocuments();
+    const email = process.env.ADMIN_EMAIL;
+    const password = process.env.ADMIN_PASSWORD;
 
-    if (count === 0) {
-      await Admin.create({
-        email: process.env.ADMIN_EMAIL,
-        password: process.env.ADMIN_PASSWORD // 👈 PLAIN
-      });
+    if (!email || !password) {
+      console.log('❌ ADMIN_EMAIL or ADMIN_PASSWORD missing');
+      return;
+    }
 
-      console.log('✅ Default admin created');
+    let admin = await Admin.findOne({ email });
+
+    if (!admin) {
+      admin = new Admin({ email, password });
+      await admin.save();
+      console.log('✅ Default admin created:', email);
+    } else {
+      console.log('ℹ️ Admin already exists:', email);
     }
   } catch (err) {
-    console.error(err);
+    console.error('❌ Admin init error:', err.message);
   }
 };
 
+
+// Admin Login
 // Admin Login
 const login = async (req, res) => {
   try {
     const { email, password } = req.body;
-
-    // 🔒 ONLY THIS EMAIL CAN LOGIN
-    if (email !== process.env.ADMIN_EMAIL) {
-      return res.status(403).json({
-        success: false,
-        message: 'Unauthorized access'
-      });
-    }
 
     const admin = await Admin.findOne({ email });
     if (!admin) {
@@ -64,12 +65,14 @@ const login = async (req, res) => {
     });
 
   } catch (err) {
+    console.error(err);
     res.status(500).json({
       success: false,
       message: 'Server error'
     });
   }
 };
+
 
 // Admin Profile
 const getProfile = async (req, res) => {

@@ -12,6 +12,11 @@ const adminSchema = new mongoose.Schema({
     type: String,
     required: true
   },
+
+  // 👇 ADD THIS
+  resetToken: String,
+  resetTokenExpiry: Date,
+
   createdAt: {
     type: Date,
     default: Date.now
