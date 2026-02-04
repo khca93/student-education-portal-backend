@@ -33,8 +33,29 @@ const fileFilter = (req, file, cb) => {
 // Create multer instance
 const upload = multer({
   storage,
-  limits: { fileSize: 10 * 1024 * 1024 },
+  limits: { fileSize: 100 * 1024 * 1024 },
   fileFilter
 });
 
-module.exports = upload.single('pdf');
+module.exports = (req, res, next) => {
+  upload.single('pdf')(req, res, function (err) {
+
+    // 🔥 File size error
+    if (err && err.code === 'LIMIT_FILE_SIZE') {
+      return res.status(400).json({
+        success: false,
+        message: 'PDF file size must be less than 100 MB'
+      });
+    }
+
+    // ❌ Other upload errors (wrong file type etc.)
+    if (err) {
+      return res.status(400).json({
+        success: false,
+        message: err.message || 'File upload error'
+      });
+    }
+
+    next();
+  });
+};
