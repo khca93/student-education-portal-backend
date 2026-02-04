@@ -9,11 +9,11 @@ const { validationResult } = require('express-validator');
 ========================================================= */
 const getAllExamPapers = async (req, res) => {
   try {
-    const { category, class: className, year, subject, paperType } = req.query;
+    const { category, className, year, subject, paperType } = req.query;
 
     const query = {};
     if (category) query.category = category;
-    if (className) query.class = className;
+    if (className) query.className = className;
     if (year) query.year = year;
     if (subject) query.subject = subject;
     if (paperType) query.paperType = paperType;
@@ -92,7 +92,7 @@ const createExamPaper = async (req, res) => {
     // Create exam paper in database
     const examPaper = await ExamPaper.create({
       category: req.body.category,
-      class: req.body.class,
+      className: req.body.className,
       subject: req.body.subject,
       year: req.body.year,
       paperType: req.body.paperType,
@@ -153,7 +153,7 @@ const updateExamPaper = async (req, res) => {
 
     // Update paper details
     paper.category = req.body.category;
-    paper.class = req.body.class;
+    paper.className = req.body.className;
     paper.subject = req.body.subject;
     paper.year = req.body.year;
     paper.paperType = req.body.paperType;

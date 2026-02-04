@@ -28,7 +28,7 @@ router.get(
   '/',
   [
     query('category').optional().isString(),
-    query('class').optional().isString(),
+    query('className').optional().isString(),
     query('year').optional().isString(),
     query('subject').optional().isString(),
     query('paperType').optional().isIn(['Final Exam Paper', 'Practice Paper'])
@@ -52,13 +52,16 @@ router.get(
 |--------------------------------------------------------------------------
 */
 const examPaperValidation = [
-  body('category')
-    .isIn(['10th SSC', '10th CBSE', '12th HSC', 'Graduation', 'Competitive'])
+ body('category')
+  .trim()
+  .notEmpty()
+  .withMessage('Category is required')
+
     .withMessage('Invalid category'),
 
-  body('class')
-    .trim()
-    .notEmpty()
+ body('className')
+  .trim()
+  .notEmpty()
     .withMessage('Class is required'),
 
   body('subject')

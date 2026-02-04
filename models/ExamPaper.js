@@ -6,7 +6,7 @@ const examPaperSchema = new mongoose.Schema({
     required: [true, 'Category is required'],
     enum: ['10th SSC', '10th CBSE', '12th HSC', 'Graduation', 'Competitive']
   },
-  class: {
+  className: {
     type: String,
     required: [true, 'Class is required']
   },
