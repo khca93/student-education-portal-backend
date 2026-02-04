@@ -28,7 +28,7 @@ router.get(
   '/',
   [
     query('category').optional().isString(),
-    query('className').optional().isString(),
+    query('class').optional().isString(),
     query('year').optional().isString(),
     query('subject').optional().isString(),
     query('paperType').optional().isIn(['Final Exam Paper', 'Practice Paper'])
@@ -59,7 +59,7 @@ const examPaperValidation = [
 
     .withMessage('Invalid category'),
 
- body('className')
+ body('class')
   .trim()
   .notEmpty()
     .withMessage('Class is required'),
