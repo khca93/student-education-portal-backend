@@ -110,7 +110,7 @@ const JobApplication = require('../models/JobApplication');
 
 const getDashboardStats = async (req, res) => {
   try {
-    const [jobs, papers, blogs, applications] = await Promise.all([
+    const [jobs, papers, applications] = await Promise.all([
       Job.countDocuments(),
       ExamPaper.countDocuments(),
       JobApplication.countDocuments()
@@ -121,7 +121,6 @@ const getDashboardStats = async (req, res) => {
       stats: {
         totalJobs: jobs,
         totalPapers: papers,
-        totalBlogs: blogs,
         totalApplications: applications
       }
     });
@@ -132,6 +131,7 @@ const getDashboardStats = async (req, res) => {
     });
   }
 };
+
 
 module.exports = {
   initializeAdmin,
