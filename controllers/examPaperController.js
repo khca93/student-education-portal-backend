@@ -1,7 +1,6 @@
 const ExamPaper = require('../models/ExamPaper');
 const { validationResult } = require('express-validator');
 
-
 /* =========================================================
    GET ALL EXAM PAPERS (WITH FILTERS)
 ========================================================= */
@@ -62,7 +61,7 @@ const getExamPaperById = async (req, res) => {
 };
 
 /* =========================================================
-   CREATE EXAM PAPER
+   CREATE EXAM PAPER  ✅ FIXED FOR CLOUDINARY
 ========================================================= */
 const createExamPaper = async (req, res) => {
   try {
@@ -81,13 +80,17 @@ const createExamPaper = async (req, res) => {
       });
     }
 
+    // 🔥 Cloudinary gives path OR secure_url
+    const pdfUrl = req.file.path || req.file.secure_url;
+
     const examPaper = await ExamPaper.create({
       category: req.body.category,
       class: req.body.class,
       subject: req.body.subject,
       year: req.body.year,
       paperType: req.body.paperType,
-      pdfPath: req.file.path
+      pdfPath: pdfUrl,
+      uploadedBy: req.user ? req.user._id : null
     });
 
     res.status(201).json({
@@ -104,43 +107,27 @@ const createExamPaper = async (req, res) => {
   }
 };
 
-
-
 /* =========================================================
-   UPDATE EXAM PAPER
+   UPDATE EXAM PAPER  ✅ FIXED
 ========================================================= */
 const updateExamPaper = async (req, res) => {
   try {
-    // Check for validation errors
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-      // Clean up uploaded file if validation fails
-      if (req.file) {
-
-      }
       return res.status(400).json({
         success: false,
         errors: errors.array()
       });
     }
 
-    // Find existing paper
     const paper = await ExamPaper.findById(req.params.id);
     if (!paper) {
-      // Clean up uploaded file if paper not found
-      if (req.file) {
-
-      }
       return res.status(404).json({
         success: false,
         message: 'Exam paper not found'
       });
     }
 
-    // Store old file path for cleanup
-
-
-    // Update paper details
     paper.category = req.body.category;
     paper.class = req.body.class;
     paper.subject = req.body.subject;
@@ -148,12 +135,9 @@ const updateExamPaper = async (req, res) => {
     paper.paperType = req.body.paperType;
 
     if (req.file) {
-      paper.pdfPath = req.file.path;
+      paper.pdfPath = req.file.path || req.file.secure_url;
     }
 
-
-
-    // Save updated paper
     await paper.save();
 
     res.json({
@@ -183,12 +167,6 @@ const deleteExamPaper = async (req, res) => {
       });
     }
 
-    // Delete PDF file from server
-    if (paper.pdfPath) {
-
-    }
-
-    // Delete from database
     await paper.deleteOne();
 
     res.json({
@@ -212,7 +190,6 @@ const getDashboardStats = async (req, res) => {
     const Job = require('../models/Job');
     const JobApplication = require('../models/JobApplication');
 
-    // Get counts in parallel for better performance
     const [totalPapers, totalJobs, totalApplications] = await Promise.all([
       ExamPaper.countDocuments(),
       Job.countDocuments(),
@@ -225,7 +202,6 @@ const getDashboardStats = async (req, res) => {
         totalPapers,
         totalJobs,
         totalApplications
-        // Removed totalBlogs
       }
     });
   } catch (err) {
@@ -236,6 +212,7 @@ const getDashboardStats = async (req, res) => {
     });
   }
 };
+
 /* =========================================================
    EXAM STRUCTURE
 ========================================================= */
