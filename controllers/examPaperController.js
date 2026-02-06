@@ -1,5 +1,4 @@
 const ExamPaper = require('../models/ExamPaper');
-const cloudinary = require('../config/cloudinary');
 const { validationResult } = require('express-validator');
 
 
@@ -82,19 +81,13 @@ const createExamPaper = async (req, res) => {
       });
     }
 
-    // 🔥 Upload to Cloudinary
-    const uploadResult = await cloudinary.uploader.upload(req.file.path, {
-      resource_type: 'raw',
-      folder: 'exam-papers'
-    });
-
     const examPaper = await ExamPaper.create({
       category: req.body.category,
       class: req.body.class,
       subject: req.body.subject,
       year: req.body.year,
       paperType: req.body.paperType,
-      pdfPath: uploadResult.secure_url, // ✅ REAL URL
+      pdfPath: req.file.path,   // ✅ Cloudinary URL (IMPORTANT)
       uploadedBy: req.user._id
     });
 
@@ -111,6 +104,7 @@ const createExamPaper = async (req, res) => {
     });
   }
 };
+
 
 
 /* =========================================================
@@ -155,13 +149,9 @@ const updateExamPaper = async (req, res) => {
     paper.paperType = req.body.paperType;
 
     if (req.file) {
-      const uploadResult = await cloudinary.uploader.upload(req.file.path, {
-        resource_type: 'raw',
-        folder: 'exam-papers'
-      });
+  paper.pdfPath = req.file.path; // ✅ direct cloudinary url
+}
 
-      paper.pdfPath = uploadResult.secure_url;
-    }
 
 
     // Save updated paper
