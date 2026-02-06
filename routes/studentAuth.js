@@ -79,6 +79,9 @@ router.post('/login', loginValidation, login);
 // ✅ Get logged-in student profile
 router.get('/profile', studentAuth, getProfile);
 
+router.post('/google-login', googleLogin);
+
+
 // ✅ Save exam paper (LOGIN REQUIRED)
 const { validationResult } = require('express-validator');
 
@@ -98,6 +101,7 @@ router.post(
   },
   savePaper
 );
+
 
 // ✅ Get all saved papers (Dashboard)
 router.get(
