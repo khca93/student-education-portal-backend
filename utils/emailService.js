@@ -22,8 +22,3 @@ const sendOtpEmail = async ({ to, name, otp }) => {
 
   await transporter.sendMail(mailOptions);
 };
-
-module.exports = {
-  sendStatusEmail,
-  sendOtpEmail
-};
