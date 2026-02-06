@@ -341,7 +341,6 @@ module.exports = {
   getJobApplications,
   getApplicationsByJob,
   deleteJobApplication,
-  updateApplicationStatus   // ✅ ADD THIS
 };
 
 

@@ -74,7 +74,6 @@ const {
   getJobApplications,
   getApplicationsByJob,
   deleteJobApplication,
-  updateApplicationStatus   // ✅ ADD THIS
 } = require('../controllers/jobController');
 
 
@@ -159,13 +158,6 @@ router.delete(
   deleteJob
 );
 
-// ✅ UPDATE APPLICATION STATUS (ADMIN)
-router.put(
-  '/applications/:id/status',
-  adminAuth,
-  param('id').isMongoId().withMessage('Invalid application ID'),
-  updateApplicationStatus
-);
 
 // Get all job applications
 router.get(
