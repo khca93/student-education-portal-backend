@@ -23,7 +23,7 @@ const getAllExamPapers = async (req, res) => {
 
     res.json({
       success: true,
-      examPapers
+      papers: examPapers
     });
   } catch (err) {
     console.error('Error getting exam papers:', err);
