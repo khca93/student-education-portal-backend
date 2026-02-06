@@ -87,8 +87,7 @@ const createExamPaper = async (req, res) => {
       subject: req.body.subject,
       year: req.body.year,
       paperType: req.body.paperType,
-      pdfPath: req.file.path,   // ✅ Cloudinary URL (IMPORTANT)
-      uploadedBy: req.user._id
+      pdfPath: req.file.path
     });
 
     res.status(201).json({
@@ -149,8 +148,8 @@ const updateExamPaper = async (req, res) => {
     paper.paperType = req.body.paperType;
 
     if (req.file) {
-  paper.pdfPath = req.file.path; // ✅ direct cloudinary url
-}
+      paper.pdfPath = req.file.path;
+    }
 
 
 

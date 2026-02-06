@@ -55,9 +55,7 @@ const examPaperValidation = [
  body('category')
   .trim()
   .notEmpty()
-  .withMessage('Category is required')
-
-    .withMessage('Invalid category'),
+  .withMessage('Category is required'),
 
  body('class')
   .trim()
