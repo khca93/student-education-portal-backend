@@ -31,8 +31,9 @@ const examPaperSchema = new mongoose.Schema({
   uploadedBy: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Admin',
-    required: true
+    required: false
   },
+
   createdAt: {
     type: Date,
     default: Date.now
@@ -44,7 +45,7 @@ const examPaperSchema = new mongoose.Schema({
 });
 
 // Update the updatedAt timestamp before saving
-examPaperSchema.pre('save', function(next) {
+examPaperSchema.pre('save', function (next) {
   this.updatedAt = Date.now();
   next();
 });

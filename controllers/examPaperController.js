@@ -73,6 +73,24 @@ const createExamPaper = async (req, res) => {
       });
     }
 
+    // 🔴 YAHI PASTE KAR
+    const allowedCategories = [
+      '10th SSC',
+      '10th CBSE',
+      '12th HSC',
+      '12th CBSE',
+      'Graduation',
+      'Competitive'
+    ];
+
+    if (!allowedCategories.includes(req.body.category)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid category value'
+      });
+    }
+    // 🔴 END
+
     if (!req.file) {
       return res.status(400).json({
         success: false,
@@ -80,7 +98,6 @@ const createExamPaper = async (req, res) => {
       });
     }
 
-    // 🔥 Cloudinary gives path OR secure_url
     const pdfUrl = req.file.path || req.file.secure_url;
 
     const examPaper = await ExamPaper.create({
@@ -106,6 +123,7 @@ const createExamPaper = async (req, res) => {
     });
   }
 };
+
 
 /* =========================================================
    UPDATE EXAM PAPER  ✅ FIXED

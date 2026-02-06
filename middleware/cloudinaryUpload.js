@@ -6,14 +6,11 @@ const storage = new CloudinaryStorage({
   cloudinary,
   params: {
     folder: 'exam-papers',
-    resource_type: 'raw', // IMPORTANT for PDFs
-    format: async (req, file) => 'pdf',
-    public_id: (req, file) => {
-      const name = file.originalname.replace(/\.[^/.]+$/, "");
-      return `${Date.now()}-${name}`;
-    },
-  },
+    resource_type: 'raw',
+    public_id: (req, file) => Date.now() + '-' + file.originalname
+  }
 });
+
 
 const upload = multer({
   storage,
