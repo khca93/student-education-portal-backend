@@ -11,7 +11,6 @@ const {
   createExamPaper,
   updateExamPaper,
   deleteExamPaper,
-  getDashboardStats,
   getExamStructure
 } = require('../controllers/examPaperController');
 
@@ -37,8 +36,6 @@ router.get(
 );
 
 router.get('/structure', getExamStructure);
-
-router.get('/stats', adminAuth, getDashboardStats);
 
 router.get(
   '/:id',
