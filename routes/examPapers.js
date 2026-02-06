@@ -3,7 +3,7 @@ const router = express.Router();
 const { body, param, query } = require('express-validator');
 
 // Import the exam paper upload middleware
-const uploadExamPaper = require('../middleware/uploadExamPaper');
+const uploadExamPaper = require('../middleware/cloudinaryUpload');
 
 const {
   getAllExamPapers,
@@ -89,7 +89,7 @@ const examPaperValidation = [
 router.post(
   '/',
   adminAuth,
-  uploadExamPaper, // Use the exam paper upload middleware
+  uploadExamPaper.single('pdf'),   // ✅ FIX
   examPaperValidation,
   createExamPaper
 );
@@ -98,10 +98,11 @@ router.post(
 router.put(
   '/:id',
   adminAuth,
-  uploadExamPaper, // Use the exam paper upload middleware
+  uploadExamPaper.single('pdf'),   // ✅ FIX
   examPaperValidation,
   updateExamPaper
 );
+
 
 // Delete exam paper
 router.delete(

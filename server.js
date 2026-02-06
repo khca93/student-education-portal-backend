@@ -4,9 +4,11 @@ const cors = require('cors');
 const dotenv = require('dotenv');
 const path = require('path');
 
+
 // Load environment variables
 dotenv.config();
 
+console.log("MONGO_URI =", process.env.MONGO_URI);
 // Import database connection
 const connectDB = require('./config/database');
 

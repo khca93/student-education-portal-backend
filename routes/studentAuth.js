@@ -2,12 +2,6 @@ const express = require('express');
 const router = express.Router();
 const { body, param } = require('express-validator');
 
-// Auth Controllers
-const {
-  register,
-  login,
-  getProfile
-} = require('../controllers/studentAuthController');
 
 // Paper Controllers
 const {
@@ -62,6 +56,13 @@ const loginValidation = [
     .notEmpty()
     .withMessage('Password is required')
 ];
+const {
+  register,
+  login,
+  getProfile,
+  sendLoginOtp,
+  verifyLoginOtp
+} = require('../controllers/studentAuthController');
 
 /*
 |-------------------------------------------------------------------------- 
@@ -105,6 +106,14 @@ router.get(
   getSavedPapers
 );
 
+// ✅ Send OTP for email login
+router.post('/login/send-otp', sendLoginOtp);
+
+// ✅ Verify OTP and login
+router.post('/login/verify-otp', verifyLoginOtp);
+
 
 
 module.exports = router;
+
+

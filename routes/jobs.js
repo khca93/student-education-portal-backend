@@ -61,11 +61,8 @@ const jobFileFilter = (req, file, cb) => {
   }
 };
 
-const jobUpload = multer({
-  storage: jobStorage,
-  limits: { fileSize: 10 * 1024 * 1024 },
-  fileFilter: jobFileFilter
-});
+const uploadExamPaper = require('../middleware/cloudinaryUpload');
+
 
 const {
   getAllJobs,
@@ -76,8 +73,10 @@ const {
   applyForJob,
   getJobApplications,
   getApplicationsByJob,
-  deleteJobApplication
+  deleteJobApplication,
+  updateApplicationStatus   // ✅ ADD THIS
 } = require('../controllers/jobController');
+
 
 const { adminAuth, studentAuth } = require('../middleware/auth');
 
@@ -131,23 +130,26 @@ router.get(
    ADMIN ROUTES
 ========================================================= */
 
-// Create new job - FIXED: Use jobUpload.single()
+
+
+// Create new job
 router.post(
   '/',
   adminAuth,
-  jobUpload.single('jobPdf'), // FIXED: Use jobUpload
+  uploadExamPaper.single('jobPdf'),
   jobValidation,
   createJob
 );
 
-// Update job - FIXED: Use jobUpload.single()
+// Create new job - FIXED: Use jobUpload.single()
 router.put(
   '/:id',
   adminAuth,
-  jobUpload.single('jobPdf'), // FIXED: Use jobUpload
+  uploadExamPaper.single('jobPdf'),
   jobValidation,
   updateJob
 );
+
 
 // Delete job
 router.delete(
@@ -155,6 +157,14 @@ router.delete(
   adminAuth,
   param('id').isMongoId().withMessage('Invalid job ID'),
   deleteJob
+);
+
+// ✅ UPDATE APPLICATION STATUS (ADMIN)
+router.put(
+  '/applications/:id/status',
+  adminAuth,
+  param('id').isMongoId().withMessage('Invalid application ID'),
+  updateApplicationStatus
 );
 
 // Get all job applications
@@ -187,7 +197,7 @@ router.delete(
 // Apply for job
 router.post(
   '/apply',
-  resumeUpload.single('resume'), // Use same upload for resumes
+  resumeUpload.single('resume'),
   [
     body('jobId')
       .isMongoId()
@@ -197,6 +207,11 @@ router.post(
       .trim()
       .notEmpty()
       .withMessage('Full name is required'),
+
+    body('qualification')
+      .trim()
+      .notEmpty()
+      .withMessage('Qualification is required'),
 
     body('email')
       .trim()
@@ -210,6 +225,7 @@ router.post(
   ],
   applyForJob
 );
+
 // Serve resume file (ADMIN)
 router.get(
   '/applications/resume/:filename',

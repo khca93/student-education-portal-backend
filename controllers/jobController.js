@@ -1,7 +1,6 @@
 const Job = require('../models/Job');
 const JobApplication = require('../models/JobApplication');
-const fs = require('fs');
-const path = require('path');
+
 const { validationResult } = require('express-validator');
 
 /* =========================================================
@@ -63,7 +62,7 @@ const createJob = async (req, res) => {
     const jobData = {
       jobTitle: req.body.jobTitle.trim(),
       jobType: req.body.jobType,
-      qualification: req.body.qualification?.trim(),
+      qualification: req.body.qualification?.trim() || '',
       companyName: req.body.companyName?.trim(),
       lastDate: req.body.lastDate || null,
       jobDescription: req.body.jobDescription || '',
@@ -71,7 +70,7 @@ const createJob = async (req, res) => {
     };
 
     if (req.file) {
-      jobData.jobPdf = `/uploads/jobs/${req.file.filename}`;
+      jobData.jobPdf = req.file.path;
     }
 
     const job = new Job(jobData);
@@ -106,12 +105,9 @@ const updateJob = async (req, res) => {
     job.updatedAt = Date.now();
 
     if (req.file) {
-      if (job.jobPdf) {
-        const oldPath = path.join(__dirname, '..', 'public', job.jobPdf);
-        if (fs.existsSync(oldPath)) fs.unlinkSync(oldPath);
-      }
-      job.jobPdf = `/uploads/jobs/${req.file.filename}`;
+      job.jobPdf = req.file.path; // ✅ Cloudinary secure URL
     }
+
 
     await job.save();
 
@@ -137,16 +133,9 @@ const deleteJob = async (req, res) => {
     }
 
     await JobApplication.deleteMany({ jobId: job._id });
-
-    if (job.jobPdf) {
-      const pdfPath = path.join(__dirname, '..', 'public', job.jobPdf);
-      if (fs.existsSync(pdfPath)) fs.unlinkSync(pdfPath);
-    }
-
     await job.deleteOne();
 
     res.json({ success: true, message: 'Job deleted' });
-
   } catch (error) {
     res.status(500).json({
       success: false,
@@ -155,6 +144,7 @@ const deleteJob = async (req, res) => {
     });
   }
 };
+
 
 /* =========================================================
    APPLY FOR JOB (STUDENT)
@@ -189,7 +179,7 @@ const applyForJob = async (req, res) => {
     const application = new JobApplication({
       jobId: req.body.jobId,
       applicantName: req.body.applicantName.trim(),
-      qualification: req.body.qualification.trim(),
+      qualification: req.body.qualification?.trim() || '',
       mobile: req.body.mobile.trim(),
       email: req.body.email.trim().toLowerCase(),
       resume: `/uploads/resumes/${req.file.filename}`
@@ -266,11 +256,6 @@ const deleteJobApplication = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Application not found' });
     }
 
-    if (application.resume) {
-      const resumePath = path.join(__dirname, '..', 'public', application.resume);
-      if (fs.existsSync(resumePath)) fs.unlinkSync(resumePath);
-    }
-
     await application.deleteOne();
 
     res.json({ success: true, message: 'Application deleted' });
@@ -306,6 +291,46 @@ const getApplicationsByJob = async (req, res) => {
   }
 };
 
+exports.updateApplicationStatus = async (req, res) => {
+  try {
+    const { status } = req.body;
+
+    const allowedStatus = ['pending', 'reviewed', 'shortlisted', 'rejected', 'hired'];
+    if (!allowedStatus.includes(status)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid status'
+      });
+    }
+
+    const application = await JobApplication.findByIdAndUpdate(
+      req.params.id,
+      { status },
+      { new: true }
+    );
+
+    if (!application) {
+      return res.status(404).json({
+        success: false,
+        message: 'Application not found'
+      });
+    }
+
+    res.json({
+      success: true,
+      message: 'Application status updated',
+      application
+    });
+
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error'
+    });
+  }
+};
+
 module.exports = {
   getAllJobs,
   getJobById,
@@ -315,5 +340,8 @@ module.exports = {
   applyForJob,
   getJobApplications,
   getApplicationsByJob,
-  deleteJobApplication
+  deleteJobApplication,
+  updateApplicationStatus   // ✅ ADD THIS
 };
+
+

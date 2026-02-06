@@ -1,6 +1,5 @@
 const ExamPaper = require('../models/ExamPaper');
-const path = require('path');
-const fs = require('fs');
+const cloudinary = require('../config/cloudinary');
 const { validationResult } = require('express-validator');
 
 
@@ -68,20 +67,14 @@ const getExamPaperById = async (req, res) => {
 ========================================================= */
 const createExamPaper = async (req, res) => {
   try {
-    // Check for validation errors
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-      // Clean up uploaded file if validation fails
-      if (req.file) {
-        fs.unlinkSync(req.file.path);
-      }
       return res.status(400).json({
         success: false,
         errors: errors.array()
       });
     }
 
-    // Check if file was uploaded
     if (!req.file) {
       return res.status(400).json({
         success: false,
@@ -89,14 +82,19 @@ const createExamPaper = async (req, res) => {
       });
     }
 
-    // Create exam paper in database
+    // 🔥 Upload to Cloudinary
+    const uploadResult = await cloudinary.uploader.upload(req.file.path, {
+      resource_type: 'raw',
+      folder: 'exam-papers'
+    });
+
     const examPaper = await ExamPaper.create({
       category: req.body.category,
       class: req.body.class,
       subject: req.body.subject,
       year: req.body.year,
       paperType: req.body.paperType,
-      pdfPath: `/uploads/papers/${req.file.filename}`,
+      pdfPath: uploadResult.secure_url, // ✅ REAL URL
       uploadedBy: req.user._id
     });
 
@@ -104,11 +102,8 @@ const createExamPaper = async (req, res) => {
       success: true,
       examPaper
     });
+
   } catch (err) {
-    // Clean up uploaded file on error
-    if (req.file) {
-      fs.unlinkSync(req.file.path);
-    }
     console.error('Error creating exam paper:', err);
     res.status(500).json({
       success: false,
@@ -116,6 +111,7 @@ const createExamPaper = async (req, res) => {
     });
   }
 };
+
 
 /* =========================================================
    UPDATE EXAM PAPER
@@ -127,7 +123,7 @@ const updateExamPaper = async (req, res) => {
     if (!errors.isEmpty()) {
       // Clean up uploaded file if validation fails
       if (req.file) {
-        fs.unlinkSync(req.file.path);
+
       }
       return res.status(400).json({
         success: false,
@@ -140,7 +136,7 @@ const updateExamPaper = async (req, res) => {
     if (!paper) {
       // Clean up uploaded file if paper not found
       if (req.file) {
-        fs.unlinkSync(req.file.path);
+
       }
       return res.status(404).json({
         success: false,
@@ -149,7 +145,7 @@ const updateExamPaper = async (req, res) => {
     }
 
     // Store old file path for cleanup
-    const oldFilePath = paper.pdfPath ? path.join(__dirname, '..', paper.pdfPath) : null;
+
 
     // Update paper details
     paper.category = req.body.category;
@@ -158,18 +154,15 @@ const updateExamPaper = async (req, res) => {
     paper.year = req.body.year;
     paper.paperType = req.body.paperType;
 
-    // If new file uploaded, update file path and delete old file
     if (req.file) {
-      // Delete old file if it exists
-      if (oldFilePath && fs.existsSync(oldFilePath)) {
-        try {
-          fs.unlinkSync(oldFilePath);
-        } catch (unlinkErr) {
-          console.error('Error deleting old file:', unlinkErr);
-        }
-      }
-      paper.pdfPath = `/uploads/papers/${req.file.filename}`;
+      const uploadResult = await cloudinary.uploader.upload(req.file.path, {
+        resource_type: 'raw',
+        folder: 'exam-papers'
+      });
+
+      paper.pdfPath = uploadResult.secure_url;
     }
+
 
     // Save updated paper
     await paper.save();
@@ -179,10 +172,6 @@ const updateExamPaper = async (req, res) => {
       examPaper: paper
     });
   } catch (err) {
-    // Clean up uploaded file on error
-    if (req.file) {
-      fs.unlinkSync(req.file.path);
-    }
     console.error('Error updating exam paper:', err);
     res.status(500).json({
       success: false,
@@ -207,14 +196,7 @@ const deleteExamPaper = async (req, res) => {
 
     // Delete PDF file from server
     if (paper.pdfPath) {
-      const filePath = path.join(__dirname, '..', paper.pdfPath);
-      if (fs.existsSync(filePath)) {
-        try {
-          fs.unlinkSync(filePath);
-        } catch (unlinkErr) {
-          console.error('Error deleting file:', unlinkErr);
-        }
-      }
+
     }
 
     // Delete from database
@@ -240,7 +222,7 @@ const getDashboardStats = async (req, res) => {
   try {
     const Job = require('../models/Job');
     const JobApplication = require('../models/JobApplication');
-    
+
     // Get counts in parallel for better performance
     const [totalPapers, totalJobs, totalApplications] = await Promise.all([
       ExamPaper.countDocuments(),
