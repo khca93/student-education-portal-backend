@@ -1,6 +1,5 @@
 const Student = require('../models/Student');
 const jwt = require('jsonwebtoken');
-const { sendOtpEmail } = require('../utils/emailService');
 const { validationResult } = require('express-validator');
 
 const generateToken = (id) =>
@@ -69,101 +68,46 @@ const getProfile = async (req, res) => {
   });
 };
 
-exports.sendLoginOtp = async (req, res) => {
+const googleLogin = async (req, res) => {
   try {
-    const { email } = req.body;
+    const { email, name, googleId } = req.body;
 
-    if (!email) {
-      return res.status(400).json({ success: false, message: 'Email required' });
+    if (!email || !googleId) {
+      return res.status(400).json({ message: 'Invalid Google data' });
     }
 
-    const student = await Student.findOne({ email });
+    let student = await Student.findOne({
+      $or: [{ email }, { googleId }]
+    });
+
     if (!student) {
-      return res.status(404).json({
-        success: false,
-        message: 'Email not registered'
-      });
-    }
+  student = await Student.create({
+    name,
+    email,
+    googleId,
+    mobile: "GOOGLE_" + Date.now(),
+    password: Math.random().toString(36).slice(-8)
+  });
+}
 
-    const otp = Math.floor(100000 + Math.random() * 900000).toString();
 
-    student.otp = otp;
-    student.otpExpiry = Date.now() + 5 * 60 * 1000; // 5 min
-    await student.save();
-
-    await sendOtpEmail({
-      to: student.email,
-      name: student.name,
-      otp
-    });
+    const token = generateToken(student._id);
 
     res.json({
       success: true,
-      message: 'OTP sent to email'
-    });
-
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({
-      success: false,
-      message: 'Failed to send OTP'
-    });
-  }
-};
-
-exports.verifyLoginOtp = async (req, res) => {
-  try {
-    const { email, otp } = req.body;
-
-    const student = await Student.findOne({ email });
-    if (!student || !student.otp) {
-      return res.status(400).json({
-        success: false,
-        message: 'Invalid request'
-      });
-    }
-
-    if (student.otp !== otp || student.otpExpiry < Date.now()) {
-      return res.status(400).json({
-        success: false,
-        message: 'Invalid or expired OTP'
-      });
-    }
-
-    // Clear OTP
-    student.otp = null;
-    student.otpExpiry = null;
-    await student.save();
-
-    const token = jwt.sign(
-      { id: student._id },
-      process.env.JWT_SECRET,
-      { expiresIn: '7d' }
-    );
-
-    res.json({
-      success: true,
-      message: 'Login successful',
       token,
-      student: {
-        id: student._id,
-        name: student.name,
-        email: student.email
-      }
+      user: student
     });
 
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({
-      success: false,
-      message: 'OTP verification failed'
-    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Google login failed' });
   }
 };
+
 module.exports = {
   register,
   login,
   getProfile,
-  sendLoginOtp,
-  verifyLoginOtp
+  googleLogin
 };

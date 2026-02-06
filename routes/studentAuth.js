@@ -60,9 +60,9 @@ const {
   register,
   login,
   getProfile,
-  sendLoginOtp,
-  verifyLoginOtp
+  googleLogin
 } = require('../controllers/studentAuthController');
+
 
 /*
 |-------------------------------------------------------------------------- 
@@ -105,12 +105,6 @@ router.get(
   studentAuth,
   getSavedPapers
 );
-
-// ✅ Send OTP for email login
-router.post('/login/send-otp', sendLoginOtp);
-
-// ✅ Verify OTP and login
-router.post('/login/verify-otp', verifyLoginOtp);
 
 
 

@@ -22,6 +22,11 @@ const studentSchema = new mongoose.Schema({
     type: String,
     required: true
   },
+  googleId: {
+  type: String,
+  default: null
+},
+
 
   // Saved exam papers
   savedPapers: [
@@ -57,14 +62,18 @@ const studentSchema = new mongoose.Schema({
     type: Date,
     default: Date.now
   }
+  
 });
+
 
 // Hash password
 studentSchema.pre('save', async function (next) {
   if (!this.isModified('password')) return next();
   this.password = await bcrypt.hash(this.password, 10);
   next();
+  
 });
+
 
 // Compare password
 studentSchema.methods.comparePassword = function (password) {
