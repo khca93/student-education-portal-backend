@@ -98,15 +98,16 @@ const createExamPaper = async (req, res) => {
       });
     }
 
-    const pdfUrl = req.file.path || req.file.secure_url;
+    const pdfPublicId = req.file.filename;
 
     const examPaper = await ExamPaper.create({
       category: req.body.category,
       class: req.body.class,
       subject: req.body.subject,
       year: req.body.year,
+      fileName: req.body.fileName,
       paperType: req.body.paperType,
-      pdfPath: pdfUrl,
+     pdfPath: pdfPublicId,
       uploadedBy: req.user ? req.user._id : null
     });
 
@@ -149,11 +150,12 @@ const updateExamPaper = async (req, res) => {
     paper.category = req.body.category;
     paper.class = req.body.class;
     paper.subject = req.body.subject;
+    paper.fileName = req.body.fileName;
     paper.year = req.body.year;
     paper.paperType = req.body.paperType;
 
     if (req.file) {
-      paper.pdfPath = req.file.path || req.file.secure_url;
+      paper.pdfPath = req.file.filename;
     }
 
     await paper.save();
