@@ -7,17 +7,16 @@ const storage = new CloudinaryStorage({
   params: (req, file) => ({
     folder: 'exam-papers',
 
-    // ✅ IMPORTANT: PDF browser + download support
-    resource_type: 'image',
-    format: 'pdf',
+    // ✅ CORRECT: PDF must be RAW
+    resource_type: 'raw',
 
-    // ✅ Force proper download
+    // ✅ allow browser view + download
     flags: 'attachment',
 
-    // ✅ Clean & safe filename
+    // ✅ clean filename (no spaces)
     public_id: `${Date.now()}-${file.originalname
       .replace(/\s+/g, '-')
-      .replace('.pdf', '')}`
+      .replace(/\.pdf$/i, '')}`
   })
 });
 
