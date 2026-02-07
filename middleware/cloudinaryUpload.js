@@ -4,17 +4,34 @@ const cloudinary = require('../config/cloudinary');
 
 const storage = new CloudinaryStorage({
   cloudinary,
-  params: {
+  params: (req, file) => ({
     folder: 'exam-papers',
-    resource_type: 'raw',
-    public_id: (req, file) => Date.now() + '-' + file.originalname
+
+    // ✅ IMPORTANT: PDF browser + download support
+    resource_type: 'image',
+    format: 'pdf',
+
+    // ✅ Force proper download
+    flags: 'attachment',
+
+    // ✅ Clean & safe filename
+    public_id: `${Date.now()}-${file.originalname
+      .replace(/\s+/g, '-')
+      .replace('.pdf', '')}`
+  })
+});
+
+const uploadExamPaper = multer({
+  storage,
+  limits: {
+    fileSize: 20 * 1024 * 1024 // 20 MB
+  },
+  fileFilter: (req, file, cb) => {
+    if (file.mimetype !== 'application/pdf') {
+      return cb(new Error('Only PDF files are allowed'), false);
+    }
+    cb(null, true);
   }
 });
 
-
-const upload = multer({
-  storage,
-  limits: { fileSize: 20 * 1024 * 1024 }, // 20MB
-});
-
-module.exports = upload;
+module.exports = uploadExamPaper;
