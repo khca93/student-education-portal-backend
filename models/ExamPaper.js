@@ -19,6 +19,10 @@ const examPaperSchema = new mongoose.Schema({
     type: String,
     required: [true, 'Subject is required']
   },
+  fileName: {
+    type: String,
+    required: [true, 'Filename  is required']
+},
   paperType: {
     type: String,
     required: [true, 'Paper type is required'],
