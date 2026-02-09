@@ -99,7 +99,7 @@ const createExamPaper = async (req, res) => {
     }
 
   
-    const examPaper = await ExamPaper.create({
+const examPaper = await ExamPaper.create({
   category: req.body.category,
   class: req.body.class,
   subject: req.body.subject,
@@ -107,11 +107,12 @@ const createExamPaper = async (req, res) => {
   fileName: req.body.fileName,
   paperType: req.body.paperType,
 
-  // ✅ THIS IS THE ONLY CORRECT WAY
-  pdfPath: req.file.path,
+  // ✅ ONLY THIS
+  pdfPath: req.file.secure_url,
 
   uploadedBy: req.user ? req.user._id : null
 });
+
 
     res.status(201).json({
       success: true,
@@ -156,9 +157,10 @@ const updateExamPaper = async (req, res) => {
     paper.year = req.body.year;
     paper.paperType = req.body.paperType;
 
-    if (req.file) {
-      paper.pdfPath = req.file.path;
-    }
+  if (req.file) {
+  paper.pdfPath = req.file.secure_url;
+}
+
 
     await paper.save();
 

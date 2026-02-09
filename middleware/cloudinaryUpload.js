@@ -6,21 +6,24 @@ const storage = new CloudinaryStorage({
   cloudinary,
   params: {
     folder: 'exam-papers',
-    resource_type: 'auto',   // ✅ FINAL
-    use_filename: true,
-    unique_filename: true
+
+    // ✅ IMPORTANT
+    resource_type: 'image',
+    format: 'pdf',
+
+    public_id: (req, file) =>
+      `${Date.now()}-${file.originalname
+        .replace(/\s+/g, '-')
+        .replace(/[^a-zA-Z0-9.\-_]/g, '')}`
   }
 });
 
-
 const uploadExamPaper = multer({
   storage,
-  limits: {
-    fileSize: 20 * 1024 * 1024 // 20 MB
-  },
+  limits: { fileSize: 20 * 1024 * 1024 },
   fileFilter: (req, file, cb) => {
     if (file.mimetype !== 'application/pdf') {
-      return cb(new Error('Only PDF files are allowed'), false);
+      return cb(new Error('Only PDF allowed'), false);
     }
     cb(null, true);
   }
