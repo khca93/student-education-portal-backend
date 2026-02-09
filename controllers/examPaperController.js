@@ -108,7 +108,7 @@ const examPaper = await ExamPaper.create({
   paperType: req.body.paperType,
 
   // ✅ ONLY THIS
-  pdfPath: `/uploads/papers/${req.file.filename}`,
+ pdfPath: req.file.path,
 
   uploadedBy: req.user ? req.user._id : null
 });
@@ -158,7 +158,7 @@ const updateExamPaper = async (req, res) => {
     paper.paperType = req.body.paperType;
 
   if (req.file) {
-  paper.pdfPath = `/uploads/papers/${req.file.filename}`;
+  paper.pdfPath = req.file.path;
 }
 
 
