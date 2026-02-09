@@ -98,18 +98,20 @@ const createExamPaper = async (req, res) => {
       });
     }
 
-    const pdfPublicId = req.file.filename;
-
+  
     const examPaper = await ExamPaper.create({
-      category: req.body.category,
-      class: req.body.class,
-      subject: req.body.subject,
-      year: req.body.year,
-      fileName: req.body.fileName,
-      paperType: req.body.paperType,
-     pdfPath: pdfPublicId,
-      uploadedBy: req.user ? req.user._id : null
-    });
+  category: req.body.category,
+  class: req.body.class,
+  subject: req.body.subject,
+  year: req.body.year,
+  fileName: req.body.fileName,
+  paperType: req.body.paperType,
+
+  // ✅ THIS IS THE ONLY CORRECT WAY
+  pdfPath: req.file.path,
+
+  uploadedBy: req.user ? req.user._id : null
+});
 
     res.status(201).json({
       success: true,
@@ -155,7 +157,7 @@ const updateExamPaper = async (req, res) => {
     paper.paperType = req.body.paperType;
 
     if (req.file) {
-      paper.pdfPath = req.file.filename;
+      paper.pdfPath = req.file.path;
     }
 
     await paper.save();

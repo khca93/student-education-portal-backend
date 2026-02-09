@@ -4,21 +4,14 @@ const cloudinary = require('../config/cloudinary');
 
 const storage = new CloudinaryStorage({
   cloudinary,
-  params: (req, file) => ({
+  params: {
     folder: 'exam-papers',
-
-    // ✅ PDF must be RAW
-    resource_type: 'raw',
-
-    // ✅ IMPORTANT: keep .pdf extension
-    public_id: `${Date.now()}-${file.originalname
-      .replace(/\s+/g, '-')
-      .replace(/[^a-zA-Z0-9.\-_]/g, '')}`,
-
-    // ✅ allow browser view (NOT force download)
-    flags: 'attachment:false'
-  })
+    resource_type: 'auto',   // ✅ FINAL
+    use_filename: true,
+    unique_filename: true
+  }
 });
+
 
 const uploadExamPaper = multer({
   storage,
