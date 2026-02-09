@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { body, param, query } = require('express-validator');
 
-const uploadExamPaper = require('../middleware/cloudinaryUpload');
+const { uploadPaper } = require('../middleware/upload');
 const cloudinary = require('../config/cloudinary');
 
 const {
@@ -43,26 +43,6 @@ router.get('/structure', getExamStructure);
 | PDF Download Route  ✅ MUST BE ABOVE /:id
 |--------------------------------------------------------------------------
 */
-router.get('/download/pdf/:publicId', async (req, res) => {
-  try {
-    const publicId = req.params.publicId;
-
-    if (!publicId) {
-      return res.status(400).send('Invalid PDF');
-    }
-
-    const pdfUrl = cloudinary.url(publicId, {
-      resource_type: 'raw',
-      secure: true
-    });
-
-    return res.redirect(pdfUrl);
-
-  } catch (err) {
-    console.error('PDF download error:', err);
-    res.status(500).send('PDF download failed');
-  }
-});
 
 // Get single exam paper by ID
 router.get(
@@ -101,7 +81,7 @@ const examPaperValidation = [
 router.post(
   '/',
   adminAuth,
-  uploadExamPaper.single('pdf'),
+  uploadPaper,
   examPaperValidation,
   createExamPaper
 );
@@ -110,10 +90,11 @@ router.post(
 router.put(
   '/:id',
   adminAuth,
-  uploadExamPaper.single('pdf'),
+  uploadPaper,
   examPaperValidation,
   updateExamPaper
 );
+
 
 // Delete exam paper
 router.delete(
