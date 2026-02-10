@@ -9,7 +9,7 @@ const examPaperStorage = new CloudinaryStorage({
   cloudinary,
   params: async (req, file) => ({
     folder: 'exam-papers',
-    resource_type: 'auto',   // ✅ FIXED
+    resource_type: 'raw',   // ✅ FIXED
     format: 'pdf',           // ✅ FORCE PDF
     public_id: `paper_${Date.now()}`,
   }),
@@ -33,7 +33,7 @@ const jobPdfStorage = new CloudinaryStorage({
   cloudinary,
   params: async (req, file) => ({
     folder: 'job-pdfs',
-    resource_type: 'auto',
+    resource_type: 'raw',
     format: 'pdf',
     flags: 'attachment',   // ✅ download only
     public_id: `job_${Date.now()}`,
