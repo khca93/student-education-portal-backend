@@ -8,8 +8,7 @@ const storage = new CloudinaryStorage({
     folder: 'exam-papers',
 
     // ✅ IMPORTANT
-    resource_type: 'image',
-    format: 'pdf',
+    resource_type: 'raw',
 
     public_id: (req, file) =>
       `${Date.now()}-${file.originalname
