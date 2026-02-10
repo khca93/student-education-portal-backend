@@ -1,38 +1,49 @@
-// ✅ JOB PDF UPLOAD CONFIGURATION
-const jobStorage = new CloudinaryStorage({
+const multer = require('multer');
+const { CloudinaryStorage } = require('multer-storage-cloudinary');
+const cloudinary = require('../config/cloudinary');
+
+/* ===============================
+   EXAM PAPER PDF (VIEW + DOWNLOAD)
+================================ */
+const examPaperStorage = new CloudinaryStorage({
   cloudinary,
-  params: async (req, file) => {
-    return {
-      folder: 'job-pdfs',
-      resource_type: 'raw',  // ⭐⭐ PDF साठी 'raw' ⭐⭐
-      format: 'pdf',
-      type: 'upload',
-      
-      public_id: `job_${Date.now()}_${file.originalname
-        .replace(/\s+/g, '_')
-        .replace('.pdf', '')}`,
-      
-      flags: 'attachment',
-      transformation: [
-        { flags: 'attachment:job.pdf' }
-      ]
-    };
-  }
+  params: async (req, file) => ({
+    folder: 'exam-papers',
+    resource_type: 'raw',     // PDF
+    public_id: `paper_${Date.now()}`,
+  }),
 });
 
-const uploadJobPdf = multer({
-  storage: jobStorage,
+const uploadExamPaper = multer({
+  storage: examPaperStorage,
   limits: { fileSize: 10 * 1024 * 1024 },
   fileFilter: (req, file, cb) => {
     if (file.mimetype !== 'application/pdf') {
-      return cb(new Error('Only PDF files are allowed for jobs'), false);
+      return cb(new Error('Only PDF files allowed'), false);
     }
     cb(null, true);
-  }
+  },
 });
 
-// ✅ EXPORT BOTH
+/* ===============================
+   JOB PDF (DOWNLOAD ONLY)
+================================ */
+const jobPdfStorage = new CloudinaryStorage({
+  cloudinary,
+  params: async (req, file) => ({
+    folder: 'job-pdfs',
+    resource_type: 'raw',
+    flags: 'attachment',   // force download
+    public_id: `job_${Date.now()}`,
+  }),
+});
+
+const uploadJobPdf = multer({
+  storage: jobPdfStorage,
+  limits: { fileSize: 10 * 1024 * 1024 },
+});
+
 module.exports = {
   uploadExamPaper,
-  uploadJobPdf
+  uploadJobPdf,
 };

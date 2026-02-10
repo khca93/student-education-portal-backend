@@ -74,7 +74,7 @@ const { uploadExamPaper } = require('../middleware/cloudinaryUpload');
 router.post(
   '/',
   adminAuth,
-  uploadExamPaper.single('pdf'),  // ⭐⭐ येथे single('pdf') add करा ⭐⭐
+  uploadExamPaper.single('pdf'),
   examPaperValidation,
   createExamPaper
 );
@@ -83,7 +83,7 @@ router.post(
 router.put(
   '/:id',
   adminAuth,
-  uploadPaper.single('pdf'),   // ❗ SAME FIX HERE
+  uploadExamPaper.single('pdf'),
   examPaperValidation,
   updateExamPaper
 );

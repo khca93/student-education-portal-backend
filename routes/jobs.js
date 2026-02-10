@@ -146,7 +146,7 @@ router.post(
 router.put(
   '/:id',
   adminAuth,
-  uploadExamPaper.single('jobPdf'),
+  uploadJobPdf.single('jobPdf'),
   jobValidation,
   updateJob
 );
