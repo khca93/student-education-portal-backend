@@ -61,7 +61,7 @@ const getExamPaperById = async (req, res) => {
 };
 
 /* =========================================================
-   CREATE EXAM PAPER  ✅ FIXED FOR CLOUDINARY
+   CREATE EXAM PAPER
 ========================================================= */
 const createExamPaper = async (req, res) => {
   try {
@@ -73,7 +73,8 @@ const createExamPaper = async (req, res) => {
       });
     }
 
-    // 🔴 YAHI PASTE KAR
+    console.log("Uploaded file info:", req.file);
+
     const allowedCategories = [
       '10th SSC',
       '10th CBSE',
@@ -89,30 +90,24 @@ const createExamPaper = async (req, res) => {
         message: 'Invalid category value'
       });
     }
-    // 🔴 END
 
-    if (!req.file) {
+    if (!req.file || !req.file.path) {
       return res.status(400).json({
         success: false,
-        message: 'PDF file is required'
+        message: 'PDF upload failed'
       });
     }
 
-  
-const examPaper = await ExamPaper.create({
-  category: req.body.category,
-  class: req.body.class,
-  subject: req.body.subject,
-  year: req.body.year,
-  fileName: req.body.fileName,
-  paperType: req.body.paperType,
-
-  // ✅ ONLY THIS
- pdfPath: req.file.path,
-
-  uploadedBy: req.user ? req.user._id : null
-});
-
+    const examPaper = await ExamPaper.create({
+      category: req.body.category,
+      class: req.body.class,
+      subject: req.body.subject,
+      year: req.body.year,
+      fileName: req.body.fileName,
+      paperType: req.body.paperType,
+      pdfPath: req.file.path,
+      uploadedBy: req.user && req.user._id ? req.user._id : null
+    });
 
     res.status(201).json({
       success: true,
@@ -128,9 +123,8 @@ const examPaper = await ExamPaper.create({
   }
 };
 
-
 /* =========================================================
-   UPDATE EXAM PAPER  ✅ FIXED
+   UPDATE EXAM PAPER (CORRECTED)
 ========================================================= */
 const updateExamPaper = async (req, res) => {
   try {
@@ -157,17 +151,18 @@ const updateExamPaper = async (req, res) => {
     paper.year = req.body.year;
     paper.paperType = req.body.paperType;
 
-  if (req.file) {
-  paper.pdfPath = req.file.path;
-}
-
+    if (req.file) {
+      paper.pdfPath = req.file.path;
+    }
 
     await paper.save();
 
     res.json({
       success: true,
-      examPaper: paper
+      message: 'Exam paper updated successfully',
+      paper
     });
+
   } catch (err) {
     console.error('Error updating exam paper:', err);
     res.status(500).json({
@@ -178,7 +173,7 @@ const updateExamPaper = async (req, res) => {
 };
 
 /* =========================================================
-   DELETE EXAM PAPER
+   DELETE EXAM PAPER (CORRECTED)
 ========================================================= */
 const deleteExamPaper = async (req, res) => {
   try {

@@ -3,7 +3,7 @@ const router = express.Router();
 const { body, param, query } = require('express-validator');
 
 const { uploadPaper } = require('../middleware/upload');
-const cloudinary = require('../config/cloudinary');
+const { adminAuth } = require('../middleware/auth');
 
 const {
   getAllExamPapers,
@@ -13,8 +13,6 @@ const {
   deleteExamPaper,
   getExamStructure
 } = require('../controllers/examPaperController');
-
-const { adminAuth } = require('../middleware/auth');
 
 /*
 |--------------------------------------------------------------------------
@@ -37,12 +35,6 @@ router.get(
 
 // Get exam structure
 router.get('/structure', getExamStructure);
-
-/*
-|--------------------------------------------------------------------------
-| PDF Download Route  ✅ MUST BE ABOVE /:id
-|--------------------------------------------------------------------------
-*/
 
 // Get single exam paper by ID
 router.get(
@@ -70,33 +62,33 @@ const examPaperValidation = [
     .withMessage('File name is required')
 ];
 
-
 /*
 |--------------------------------------------------------------------------
 | Admin Routes
 |--------------------------------------------------------------------------
 */
 
-// Create exam paper
+// ✅ CREATE exam paper (🔥 MOST IMPORTANT FIX HERE 🔥)
+const { uploadExamPaper } = require('../middleware/cloudinaryUpload');
+
 router.post(
   '/',
   adminAuth,
-  uploadPaper,
+  uploadExamPaper.single('pdf'),  // ⭐⭐ येथे single('pdf') add करा ⭐⭐
   examPaperValidation,
   createExamPaper
 );
 
-// Update exam paper
+// ✅ UPDATE exam paper
 router.put(
   '/:id',
   adminAuth,
-  uploadPaper,
+  uploadPaper.single('pdf'),   // ❗ SAME FIX HERE
   examPaperValidation,
   updateExamPaper
 );
 
-
-// Delete exam paper
+// DELETE exam paper
 router.delete(
   '/:id',
   adminAuth,

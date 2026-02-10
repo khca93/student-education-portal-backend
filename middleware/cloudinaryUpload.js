@@ -1,31 +1,38 @@
-const multer = require('multer');
-const { CloudinaryStorage } = require('multer-storage-cloudinary');
-const cloudinary = require('../config/cloudinary');
-
-const storage = new CloudinaryStorage({
+// ✅ JOB PDF UPLOAD CONFIGURATION
+const jobStorage = new CloudinaryStorage({
   cloudinary,
-  params: {
-    folder: 'exam-papers',
-
-    // ✅ IMPORTANT
-    resource_type: 'raw',
-
-    public_id: (req, file) =>
-      `${Date.now()}-${file.originalname
-        .replace(/\s+/g, '-')
-        .replace(/[^a-zA-Z0-9.\-_]/g, '')}`
+  params: async (req, file) => {
+    return {
+      folder: 'job-pdfs',
+      resource_type: 'raw',  // ⭐⭐ PDF साठी 'raw' ⭐⭐
+      format: 'pdf',
+      type: 'upload',
+      
+      public_id: `job_${Date.now()}_${file.originalname
+        .replace(/\s+/g, '_')
+        .replace('.pdf', '')}`,
+      
+      flags: 'attachment',
+      transformation: [
+        { flags: 'attachment:job.pdf' }
+      ]
+    };
   }
 });
 
-const uploadExamPaper = multer({
-  storage,
-  limits: { fileSize: 20 * 1024 * 1024 },
+const uploadJobPdf = multer({
+  storage: jobStorage,
+  limits: { fileSize: 10 * 1024 * 1024 },
   fileFilter: (req, file, cb) => {
     if (file.mimetype !== 'application/pdf') {
-      return cb(new Error('Only PDF allowed'), false);
+      return cb(new Error('Only PDF files are allowed for jobs'), false);
     }
     cb(null, true);
   }
 });
 
-module.exports = uploadExamPaper;
+// ✅ EXPORT BOTH
+module.exports = {
+  uploadExamPaper,
+  uploadJobPdf
+};

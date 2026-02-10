@@ -132,10 +132,12 @@ router.get(
 
 
 // Create new job
+const { uploadJobPdf } = require('../middleware/cloudinaryUpload');
+
 router.post(
   '/',
   adminAuth,
-  uploadExamPaper.single('jobPdf'),
+  uploadJobPdf.single('jobPdf'),  // ⭐⭐ uploadJobPdf use करा ⭐⭐
   jobValidation,
   createJob
 );
