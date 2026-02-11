@@ -71,25 +71,23 @@ const createJob = async (req, res) => {
       return res.status(400).json({ success: false, errors: errors.array() });
     }
 
-    if (!req.file) {
-      return res.status(400).json({
-        success: false,
-        message: 'Job PDF file is required'
-      });
+    let jobPdfUrl = null;
+
+    if (req.file) {
+      const fileName = Date.now() + "-" + req.file.originalname;
+
+      await s3.send(
+        new PutObjectCommand({
+          Bucket: "exampaper-pdfs",
+          Key: fileName,
+          Body: req.file.buffer,
+          ContentType: "application/pdf",
+        })
+      );
+
+      jobPdfUrl = `${R2_PUBLIC_URL}/${fileName}`;
     }
 
-    const fileName = Date.now() + "-" + req.file.originalname;
-
-    await s3.send(
-      new PutObjectCommand({
-        Bucket: "exampaper-pdfs",
-        Key: fileName,
-        Body: req.file.buffer,
-        ContentType: "application/pdf",
-      })
-    );
-
-    const jobPdfUrl = `${R2_PUBLIC_URL}/${fileName}`;
 
     const jobData = {
       jobTitle: req.body.jobTitle.trim(),
@@ -98,7 +96,7 @@ const createJob = async (req, res) => {
       companyName: req.body.companyName?.trim(),
       lastDate: req.body.lastDate || null,
       jobDescription: req.body.jobDescription || '',
-      jobPdf: jobPdfUrl,
+      jobPdf: jobPdfUrl || null,
       createdBy: req.user._id
     };
 
