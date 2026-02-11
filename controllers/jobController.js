@@ -2,6 +2,18 @@ const Job = require('../models/Job');
 const JobApplication = require('../models/JobApplication');
 
 const { validationResult } = require('express-validator');
+const { S3Client, PutObjectCommand } = require("@aws-sdk/client-s3");
+
+const s3 = new S3Client({
+  region: "auto",
+  endpoint: `https://${process.env.R2_ACCOUNT_ID}.r2.cloudflarestorage.com`,
+  credentials: {
+    accessKeyId: process.env.R2_ACCESS_KEY,
+    secretAccessKey: process.env.R2_SECRET_KEY,
+  },
+});
+
+const R2_PUBLIC_URL = "https://pub-e2040be1b3ea4a2cb0e77532ce79506c.r2.dev";
 
 /* =========================================================
    GET ALL JOBS
@@ -59,6 +71,26 @@ const createJob = async (req, res) => {
       return res.status(400).json({ success: false, errors: errors.array() });
     }
 
+    if (!req.file) {
+      return res.status(400).json({
+        success: false,
+        message: 'Job PDF file is required'
+      });
+    }
+
+    const fileName = Date.now() + "-" + req.file.originalname;
+
+    await s3.send(
+      new PutObjectCommand({
+        Bucket: "exampaper-pdfs",
+        Key: fileName,
+        Body: req.file.buffer,
+        ContentType: "application/pdf",
+      })
+    );
+
+    const jobPdfUrl = `${R2_PUBLIC_URL}/${fileName}`;
+
     const jobData = {
       jobTitle: req.body.jobTitle.trim(),
       jobType: req.body.jobType,
@@ -66,12 +98,9 @@ const createJob = async (req, res) => {
       companyName: req.body.companyName?.trim(),
       lastDate: req.body.lastDate || null,
       jobDescription: req.body.jobDescription || '',
+      jobPdf: jobPdfUrl,
       createdBy: req.user._id
     };
-
-    if (req.file) {
-      jobData.jobPdf = req.file.path;
-    }
 
     const job = new Job(jobData);
     await job.save();
@@ -101,13 +130,30 @@ const updateJob = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Job not found' });
     }
 
-    Object.assign(job, req.body);
-    job.updatedAt = Date.now();
+    job.jobTitle = req.body.jobTitle || job.jobTitle;
+    job.jobType = req.body.jobType || job.jobType;
+    job.qualification = req.body.qualification || job.qualification;
+    job.companyName = req.body.companyName || job.companyName;
+    job.lastDate = req.body.lastDate || job.lastDate;
+    job.jobDescription = req.body.jobDescription || job.jobDescription;
 
+    // 🔥 NEW PDF UPLOAD IF FILE EXISTS
     if (req.file) {
-      job.jobPdf = req.file.path; // ✅ Cloudinary secure URL
+      const fileName = Date.now() + "-" + req.file.originalname;
+
+      await s3.send(
+        new PutObjectCommand({
+          Bucket: "exampaper-pdfs",
+          Key: fileName,
+          Body: req.file.buffer,
+          ContentType: "application/pdf",
+        })
+      );
+
+      job.jobPdf = `${R2_PUBLIC_URL}/${fileName}`;
     }
 
+    job.updatedAt = Date.now();
 
     await job.save();
 
@@ -121,6 +167,7 @@ const updateJob = async (req, res) => {
     });
   }
 };
+
 
 /* =========================================================
    DELETE JOB (ADMIN)
@@ -159,9 +206,21 @@ const applyForJob = async (req, res) => {
     if (!req.file) {
       return res.status(400).json({
         success: false,
-        message: 'Resume is required'
+        message: 'Resume file is required'
       });
     }
+    const fileName = Date.now() + "-" + req.file.originalname;
+
+    await s3.send(
+      new PutObjectCommand({
+        Bucket: "exampaper-pdfs",
+        Key: fileName,
+        Body: req.file.buffer,
+        ContentType: "application/pdf",
+      })
+    );
+
+    const resumeUrl = `${R2_PUBLIC_URL}/${fileName}`;
 
     const exists = await JobApplication.findOne({
       jobId: req.body.jobId,
@@ -182,7 +241,7 @@ const applyForJob = async (req, res) => {
       qualification: req.body.qualification?.trim() || '',
       mobile: req.body.mobile.trim(),
       email: req.body.email.trim().toLowerCase(),
-      resume: `/uploads/resumes/${req.file.filename}`
+      resume: resumeUrl
     });
 
     await application.save();

@@ -36,8 +36,8 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
 app.options('*', cors());
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+app.use(express.json({ limit: '20mb' }));
+app.use(express.urlencoded({ extended: true, limit: '20mb' }));
 
 
 // Routes
@@ -65,13 +65,22 @@ app.get('/api/health', (req, res) => {
 
 // Global error handler
 app.use((err, req, res, next) => {
-  console.error(err.stack);
+  console.error("GLOBAL ERROR:", err);
+
+  if (err.name === "MulterError") {
+    return res.status(400).json({
+      success: false,
+      message: "File upload error",
+      error: err.message
+    });
+  }
+
   res.status(500).json({
     success: false,
-    message: 'Something went wrong!',
-    error: process.env.NODE_ENV === 'development'
+    message: "Something went wrong!",
+    error: process.env.NODE_ENV === "development"
       ? err.message
-      : 'Internal server error'
+      : "Internal server error"
   });
 });
 

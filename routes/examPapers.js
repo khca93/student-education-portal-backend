@@ -2,8 +2,8 @@ const express = require('express');
 const router = express.Router();
 const { body, param, query } = require('express-validator');
 
-const { uploadPaper } = require('../middleware/upload');
 const { adminAuth } = require('../middleware/auth');
+const upload = require('../middleware/upload'); // ✅ ADD THIS
 
 const {
   getAllExamPapers,
@@ -28,7 +28,9 @@ router.get(
     query('class').optional().isString(),
     query('year').optional().isString(),
     query('subject').optional().isString(),
-    query('paperType').optional().isIn(['Final Exam Paper', 'Practice Paper'])
+    query('paperType')
+      .optional()
+      .isIn(['Final Exam Paper', 'Practice Paper'])
   ],
   getAllExamPapers
 );
@@ -48,6 +50,7 @@ router.get(
 | Exam Paper Validation
 |--------------------------------------------------------------------------
 */
+
 const examPaperValidation = [
   body('category').trim().notEmpty().withMessage('Category is required'),
   body('class').trim().notEmpty().withMessage('Class is required'),
@@ -60,6 +63,7 @@ const examPaperValidation = [
     .trim()
     .notEmpty()
     .withMessage('File name is required')
+  // ❌ pdfPath validation removed (R2 upload will generate it)
 ];
 
 /*
@@ -68,22 +72,20 @@ const examPaperValidation = [
 |--------------------------------------------------------------------------
 */
 
-// ✅ CREATE exam paper (🔥 MOST IMPORTANT FIX HERE 🔥)
-const { uploadExamPaper } = require('../middleware/cloudinaryUpload');
-
+// ✅ CREATE exam paper (WITH PDF UPLOAD)
 router.post(
   '/',
   adminAuth,
-  uploadExamPaper.single('pdf'),
+  upload.single('pdf'),   // ✅ THIS IS IMPORTANT
   examPaperValidation,
   createExamPaper
 );
 
-// ✅ UPDATE exam paper
+// UPDATE exam paper
 router.put(
   '/:id',
   adminAuth,
-  uploadExamPaper.single('pdf'),
+  upload.single('pdf'),   // ✅ allow optional PDF update
   examPaperValidation,
   updateExamPaper
 );

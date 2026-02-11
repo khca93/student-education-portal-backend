@@ -1,5 +1,19 @@
 const ExamPaper = require('../models/ExamPaper');
 const { validationResult } = require('express-validator');
+const { S3Client, PutObjectCommand } = require("@aws-sdk/client-s3");
+
+/* ================= R2 CONFIG ================= */
+
+const s3 = new S3Client({
+  region: "auto",
+  endpoint: `https://${process.env.R2_ACCOUNT_ID}.r2.cloudflarestorage.com`,
+  credentials: {
+    accessKeyId: process.env.R2_ACCESS_KEY,
+    secretAccessKey: process.env.R2_SECRET_KEY,
+  },
+});
+
+const R2_PUBLIC_URL = "https://pub-e2040be1b3ea4a2cb0e77532ce79506c.r2.dev";
 
 /* =========================================================
    GET ALL EXAM PAPERS (WITH FILTERS)
@@ -61,7 +75,7 @@ const getExamPaperById = async (req, res) => {
 };
 
 /* =========================================================
-   CREATE EXAM PAPER
+   CREATE EXAM PAPER (R2 UPLOAD)
 ========================================================= */
 const createExamPaper = async (req, res) => {
   try {
@@ -73,30 +87,25 @@ const createExamPaper = async (req, res) => {
       });
     }
 
-    console.log("Uploaded file info:", req.file);
-
-    const allowedCategories = [
-      '10th SSC',
-      '10th CBSE',
-      '12th HSC',
-      '12th CBSE',
-      'Graduation',
-      'Competitive'
-    ];
-
-    if (!allowedCategories.includes(req.body.category)) {
+    if (!req.file) {
       return res.status(400).json({
         success: false,
-        message: 'Invalid category value'
+        message: 'PDF file is required'
       });
     }
 
-    if (!req.file || !req.file.path) {
-      return res.status(400).json({
-        success: false,
-        message: 'PDF upload failed'
-      });
-    }
+    const fileName = Date.now() + "-" + req.file.originalname;
+
+    await s3.send(
+      new PutObjectCommand({
+        Bucket: "exampaper-pdfs",
+        Key: fileName,
+        Body: req.file.buffer,
+        ContentType: "application/pdf",
+      })
+    );
+
+    const publicUrl = `${R2_PUBLIC_URL}/${fileName}`;
 
     const examPaper = await ExamPaper.create({
       category: req.body.category,
@@ -105,7 +114,7 @@ const createExamPaper = async (req, res) => {
       year: req.body.year,
       fileName: req.body.fileName,
       paperType: req.body.paperType,
-      pdfPath: req.file.path,
+      pdfPath: publicUrl,
       uploadedBy: req.user && req.user._id ? req.user._id : null
     });
 
@@ -115,7 +124,7 @@ const createExamPaper = async (req, res) => {
     });
 
   } catch (err) {
-    console.error('Error creating exam paper:', err);
+    console.error('R2 Upload Error:', err);
     res.status(500).json({
       success: false,
       message: 'Failed to create exam paper'
@@ -124,7 +133,7 @@ const createExamPaper = async (req, res) => {
 };
 
 /* =========================================================
-   UPDATE EXAM PAPER (CORRECTED)
+   UPDATE EXAM PAPER
 ========================================================= */
 const updateExamPaper = async (req, res) => {
   try {
@@ -137,6 +146,7 @@ const updateExamPaper = async (req, res) => {
     }
 
     const paper = await ExamPaper.findById(req.params.id);
+
     if (!paper) {
       return res.status(404).json({
         success: false,
@@ -151,8 +161,20 @@ const updateExamPaper = async (req, res) => {
     paper.year = req.body.year;
     paper.paperType = req.body.paperType;
 
+    // ✅ Optional new PDF upload
     if (req.file) {
-      paper.pdfPath = req.file.path;
+      const fileName = Date.now() + "-" + req.file.originalname;
+
+      await s3.send(
+        new PutObjectCommand({
+          Bucket: "exampaper-pdfs",
+          Key: fileName,
+          Body: req.file.buffer,
+          ContentType: "application/pdf",
+        })
+      );
+
+      paper.pdfPath = `${R2_PUBLIC_URL}/${fileName}`;
     }
 
     await paper.save();
@@ -173,7 +195,7 @@ const updateExamPaper = async (req, res) => {
 };
 
 /* =========================================================
-   DELETE EXAM PAPER (CORRECTED)
+   DELETE EXAM PAPER
 ========================================================= */
 const deleteExamPaper = async (req, res) => {
   try {
