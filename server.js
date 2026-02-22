@@ -46,6 +46,9 @@ app.use('/api/admin/auth', adminAuthRoutes);
 app.use('/api/jobs', jobRoutes);
 app.use('/api/exam-papers', examPaperRoutes);
 
+const blogRoutes = require('./routes/blogs');
+app.use('/api/blogs', blogRoutes);
+
 // Root route (IMPORTANT for Render / Browser check)
 app.get('/', (req, res) => {
   res.json({
@@ -98,4 +101,5 @@ const PORT = process.env.PORT || 10000;
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 Server running on port ${PORT}`);
 });
+
 
