@@ -5,8 +5,19 @@ const blogSchema = new mongoose.Schema({
   slug: { type: String, unique: true },
   content: { type: String, required: true },
   category: { type: String },
+  image: { type: String },
+  views: { type: Number, default: 0 },
+  likes: { type: Number, default: 0 },
   metaTitle: String,
-  metaDescription: String
-}, { timestamps: true });
+  metaDescription: String,
 
+  comments: [
+    {
+      name: String,
+      message: String,
+      createdAt: { type: Date, default: Date.now }
+    }
+  ]
+
+}, { timestamps: true });
 module.exports = mongoose.model('Blog', blogSchema);
