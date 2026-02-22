@@ -1,10 +1,10 @@
 const express = require('express');
 const router = express.Router();
 const blogController = require('../controllers/blogController');
-const { protectAdmin } = require('../middleware/auth');
+const { adminAuth } = require('../middleware/auth');
 
 // Admin Create Blog
-router.post('/', protectAdmin, blogController.createBlog);
+router.post('/', adminAuth, blogController.createBlog);
 
 // Public Routes
 router.get('/', blogController.getBlogs);
