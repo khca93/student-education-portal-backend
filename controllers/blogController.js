@@ -50,6 +50,9 @@ exports.createBlog = async (req, res) => {
       message: error.message
     });
   }
+  const image = req.file
+    ? req.file.path
+    : req.body.imageUrl || '';
 };
 
 // ================= GET ALL BLOGS (WITH PAGINATION) =================

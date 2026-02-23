@@ -2,7 +2,9 @@ const express = require('express');
 const router = express.Router();
 const blogController = require('../controllers/blogController');
 const { adminAuth } = require('../middleware/auth');
-
+const multer = require('multer');
+const { CloudinaryStorage } = require('multer-storage-cloudinary');
+const cloudinary = require('cloudinary').v2;
 
 // =====================================
 // PUBLIC STATIC ROUTES (SPECIFIC FIRST)
@@ -18,7 +20,12 @@ router.post('/like/:id', blogController.likeBlog);
 // =====================================
 
 // Create blog
-router.post('/', adminAuth, blogController.createBlog);
+router.post(
+    '/',
+    adminAuth,
+    upload.single('image'),
+    blogController.createBlog
+);
 
 // Get blog by ID (for admin edit)
 router.get('/id/:id', adminAuth, blogController.getBlogById);
@@ -43,5 +50,18 @@ router.get('/', blogController.getBlogs);
 
 router.get('/:slug', blogController.getBlogBySlug);
 
+cloudinary.config({
+    cloud_name: process.env.CLOUD_NAME,
+    api_key: process.env.CLOUD_API_KEY,
+    api_secret: process.env.CLOUD_API_SECRET
+});
+const storage = new CloudinaryStorage({
+    cloudinary: cloudinary,
+    params: {
+        folder: 'blogs',
+        allowed_formats: ['jpg', 'png', 'jpeg']
+    }
+});
 
+const upload = multer({ storage });
 module.exports = router;
