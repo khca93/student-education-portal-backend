@@ -14,22 +14,28 @@ exports.createBlog = async (req, res) => {
     }
 
     // ✅ Get image from Cloudinary (if uploaded)
-    const image = req.file ? req.file.path : '';
+    let image = '';
 
-    const slug = title
+    if (req.file) {
+      image = req.file.path;
+    } else if (req.body.imageUrl) {
+      image = req.body.imageUrl;
+    }
+
+    let baseSlug = title
       .toLowerCase()
       .replace(/[^a-z0-9 ]/g, '')
       .replace(/\s+/g, '-');
 
-    // Duplicate check
-    const existingBlog = await Blog.findOne({ slug });
-    if (existingBlog) {
-      return res.status(400).json({
-        success: false,
-        message: "Blog with same title already exists"
-      });
+    let slug = baseSlug;
+    let counter = 1;
+
+    while (await Blog.findOne({ slug })) {
+      slug = baseSlug + '-' + counter;
+      counter++;
     }
 
+    // Duplicate check
     const metaTitle = title + " | Student Education Portal";
     const plainText = content.replace(/<[^>]*>/g, '');
     const metaDescription = plainText.substring(0, 150);
@@ -160,8 +166,8 @@ exports.getRelatedBlogs = async (req, res) => {
       category: currentBlog.category,
       slug: { $ne: slug }
     })
-    .sort({ createdAt: -1 })
-    .limit(3);
+      .sort({ createdAt: -1 })
+      .limit(3);
 
     res.json({
       success: true,
@@ -180,14 +186,48 @@ exports.getRelatedBlogs = async (req, res) => {
 exports.updateBlog = async (req, res) => {
   try {
 
+    const { title, content, category, image } = req.body;
+
+    let updateData = {
+      title,
+      content,
+      category,
+      image
+    };
+
+    // Regenerate slug if title changed
+    if (title) {
+      let baseSlug = title
+        .toLowerCase()
+        .replace(/[^a-z0-9 ]/g, '')
+        .replace(/\s+/g, '-');
+
+      let newSlug = baseSlug;
+      let counter = 1;
+
+      while (await Blog.findOne({ slug: newSlug, _id: { $ne: req.params.id } })) {
+        newSlug = baseSlug + '-' + counter;
+        counter++;
+      }
+
+      updateData.slug = newSlug;
+
+      updateData.metaTitle = title + " | Student Education Portal";
+    }
+
+    if (content) {
+      const plainText = content.replace(/<[^>]*>/g, '');
+      updateData.metaDescription = plainText.substring(0, 150);
+    }
+
     const blog = await Blog.findByIdAndUpdate(
       req.params.id,
-      req.body,
+      updateData,
       { new: true }
     );
 
     if (!blog) {
-      return res.status(404).json({ success: false, message: "Blog not found" });
+      return res.status(404).json({ success: false });
     }
 
     res.json({ success: true, blog });
@@ -222,6 +262,10 @@ exports.likeBlog = async (req, res) => {
       { $inc: { likes: 1 } },
       { new: true }
     );
+
+    if (!blog) {
+      return res.status(404).json({ success: false });
+    }
 
     res.json({ success: true, likes: blog.likes });
 

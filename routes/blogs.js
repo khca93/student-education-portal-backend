@@ -45,10 +45,25 @@ router.post('/like/:id', blogController.likeBlog);
 
 // ✅ Create blog (Image upload enabled)
 router.post(
-    '/',
+    '/upload-image',
     adminAuth,
     upload.single('image'),
-    blogController.createBlog
+    (req, res) => {
+
+        if (!req.file) {
+            return res.status(400).json({ success: false });
+        }
+
+        // Extra safety check
+        if (!req.file.mimetype.startsWith('image/')) {
+            return res.status(400).json({ success: false, message: "Only images allowed" });
+        }
+
+        res.json({
+            success: true,
+            url: req.file.path
+        });
+    }
 );
 
 // Get blog by ID (for admin edit)
