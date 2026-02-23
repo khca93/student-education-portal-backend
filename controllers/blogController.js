@@ -4,7 +4,7 @@ const Blog = require('../models/Blog');
 exports.createBlog = async (req, res) => {
   try {
 
-    const { title, content, category, image } = req.body;
+    const { title, content, category } = req.body;
 
     if (!title || !content) {
       return res.status(400).json({
@@ -13,12 +13,15 @@ exports.createBlog = async (req, res) => {
       });
     }
 
+    // ✅ Get image from Cloudinary (if uploaded)
+    const image = req.file ? req.file.path : '';
+
     const slug = title
       .toLowerCase()
       .replace(/[^a-z0-9 ]/g, '')
       .replace(/\s+/g, '-');
 
-    // ✅ DUPLICATE CHECK INSIDE FUNCTION
+    // Duplicate check
     const existingBlog = await Blog.findOne({ slug });
     if (existingBlog) {
       return res.status(400).json({
@@ -28,7 +31,6 @@ exports.createBlog = async (req, res) => {
     }
 
     const metaTitle = title + " | Student Education Portal";
-
     const plainText = content.replace(/<[^>]*>/g, '');
     const metaDescription = plainText.substring(0, 150);
 
@@ -50,9 +52,6 @@ exports.createBlog = async (req, res) => {
       message: error.message
     });
   }
-  const image = req.file
-    ? req.file.path
-    : req.body.imageUrl || '';
 };
 
 // ================= GET ALL BLOGS (WITH PAGINATION) =================
