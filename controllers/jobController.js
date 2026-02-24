@@ -310,7 +310,27 @@ const deleteJobApplication = async (req, res) => {
     res.status(500).json({ success: false });
   }
 };
+const getApplicationsByJob = async (req, res) => {
+  try {
 
+    const applications = await JobApplication.find({
+      jobId: req.params.jobId
+    })
+      .populate('jobId', 'jobTitle')
+      .sort({ createdAt: -1 });
+
+    res.status(200).json({
+      success: true,
+      applications
+    });
+
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch job applications'
+    });
+  }
+};
 /* =========================================================
    EXPORTS
 ========================================================= */
@@ -323,5 +343,6 @@ module.exports = {
   deleteJob,
   applyForJob,
   getJobApplications,
+  getApplicationsByJob,   // ✅ ADD THIS
   deleteJobApplication
 };

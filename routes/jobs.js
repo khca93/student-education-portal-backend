@@ -96,13 +96,6 @@ router.get(
   getJobApplications
 );
 
-router.get(
-  '/applications/job/:jobId',
-  adminAuth,
-  param('jobId').isMongoId().withMessage('Invalid job ID'),
-  getApplicationsByJob
-);
-
 router.delete(
   '/applications/:id',
   adminAuth,
