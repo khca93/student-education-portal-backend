@@ -289,3 +289,45 @@ exports.getBlogById = async (req, res) => {
     res.status(500).json({ success: false });
   }
 };
+// ================= ADD COMMENT =================
+exports.addComment = async (req, res) => {
+  try {
+
+    const { name, message } = req.body;
+
+    if (!name || !message) {
+      return res.status(400).json({
+        success: false,
+        message: "Name and message required"
+      });
+    }
+
+    const blog = await Blog.findById(req.params.id);
+
+    if (!blog) {
+      return res.status(404).json({
+        success: false,
+        message: "Blog not found"
+      });
+    }
+
+    blog.comments.push({
+      name,
+      message,
+      createdAt: new Date()
+    });
+
+    await blog.save();
+
+    res.json({
+      success: true,
+      comments: blog.comments
+    });
+
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "Server error"
+    });
+  }
+};
