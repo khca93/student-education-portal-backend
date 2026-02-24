@@ -4,6 +4,10 @@ const JobApplication = require('../models/JobApplication');
 const { validationResult } = require('express-validator');
 const { S3Client, PutObjectCommand } = require("@aws-sdk/client-s3");
 
+/* =========================================================
+   R2 CONFIG
+========================================================= */
+
 const s3 = new S3Client({
   region: "auto",
   endpoint: `https://${process.env.R2_ACCOUNT_ID}.r2.cloudflarestorage.com`,
@@ -18,6 +22,7 @@ const R2_PUBLIC_URL = "https://pub-e2040be1b3ea4a2cb0e77532ce79506c.r2.dev";
 /* =========================================================
    GET ALL JOBS
 ========================================================= */
+
 const getAllJobs = async (req, res) => {
   try {
     const jobs = await Job.find()
@@ -42,6 +47,7 @@ const getAllJobs = async (req, res) => {
 /* =========================================================
    GET JOB BY ID
 ========================================================= */
+
 const getJobById = async (req, res) => {
   try {
     const job = await Job.findById(req.params.id).select('-__v');
@@ -55,8 +61,7 @@ const getJobById = async (req, res) => {
   } catch (error) {
     res.status(400).json({
       success: false,
-      message: 'Invalid Job ID',
-      error: error.message
+      message: 'Invalid Job ID'
     });
   }
 };
@@ -64,8 +69,10 @@ const getJobById = async (req, res) => {
 /* =========================================================
    CREATE JOB (ADMIN)
 ========================================================= */
+
 const createJob = async (req, res) => {
   try {
+
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
       return res.status(400).json({ success: false, errors: errors.array() });
@@ -88,20 +95,16 @@ const createJob = async (req, res) => {
       jobPdfUrl = `${R2_PUBLIC_URL}/${fileName}`;
     }
 
-
-    const jobData = {
+    const job = await Job.create({
       jobTitle: req.body.jobTitle.trim(),
       jobType: req.body.jobType,
       qualification: req.body.qualification?.trim() || '',
-      companyName: req.body.companyName?.trim(),
+      companyName: req.body.companyName?.trim() || '',
       lastDate: req.body.lastDate || null,
       jobDescription: req.body.jobDescription || '',
-      jobPdf: jobPdfUrl || null,
+      jobPdf: jobPdfUrl,
       createdBy: req.user._id
-    };
-
-    const job = new Job(jobData);
-    await job.save();
+    });
 
     res.status(201).json({
       success: true,
@@ -119,10 +122,12 @@ const createJob = async (req, res) => {
 };
 
 /* =========================================================
-   UPDATE JOB (ADMIN)
+   UPDATE JOB
 ========================================================= */
+
 const updateJob = async (req, res) => {
   try {
+
     const job = await Job.findById(req.params.id);
     if (!job) {
       return res.status(404).json({ success: false, message: 'Job not found' });
@@ -135,7 +140,6 @@ const updateJob = async (req, res) => {
     job.lastDate = req.body.lastDate || job.lastDate;
     job.jobDescription = req.body.jobDescription || job.jobDescription;
 
-    // 🔥 NEW PDF UPLOAD IF FILE EXISTS
     if (req.file) {
       const fileName = Date.now() + "-" + req.file.originalname;
 
@@ -151,11 +155,13 @@ const updateJob = async (req, res) => {
       job.jobPdf = `${R2_PUBLIC_URL}/${fileName}`;
     }
 
-    job.updatedAt = Date.now();
-
     await job.save();
 
-    res.json({ success: true, message: 'Job updated', job });
+    res.json({
+      success: true,
+      message: 'Job updated successfully',
+      job
+    });
 
   } catch (error) {
     res.status(500).json({
@@ -166,12 +172,13 @@ const updateJob = async (req, res) => {
   }
 };
 
-
 /* =========================================================
-   DELETE JOB (ADMIN)
+   DELETE JOB
 ========================================================= */
+
 const deleteJob = async (req, res) => {
   try {
+
     const job = await Job.findById(req.params.id);
     if (!job) {
       return res.status(404).json({ success: false, message: 'Job not found' });
@@ -180,7 +187,8 @@ const deleteJob = async (req, res) => {
     await JobApplication.deleteMany({ jobId: job._id });
     await job.deleteOne();
 
-    res.json({ success: true, message: 'Job deleted' });
+    res.json({ success: true, message: 'Job deleted successfully' });
+
   } catch (error) {
     res.status(500).json({
       success: false,
@@ -190,12 +198,13 @@ const deleteJob = async (req, res) => {
   }
 };
 
-
 /* =========================================================
-   APPLY FOR JOB (STUDENT)
+   APPLY FOR JOB
 ========================================================= */
+
 const applyForJob = async (req, res) => {
   try {
+
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
       return res.status(400).json({ success: false, errors: errors.array() });
@@ -207,6 +216,7 @@ const applyForJob = async (req, res) => {
         message: 'Resume file is required'
       });
     }
+
     const fileName = Date.now() + "-" + req.file.originalname;
 
     await s3.send(
@@ -222,8 +232,7 @@ const applyForJob = async (req, res) => {
 
     const exists = await JobApplication.findOne({
       jobId: req.body.jobId,
-      email: req.body.email,
-      mobile: req.body.mobile
+      email: req.body.email
     });
 
     if (exists) {
@@ -233,7 +242,7 @@ const applyForJob = async (req, res) => {
       });
     }
 
-    const application = new JobApplication({
+    const application = await JobApplication.create({
       jobId: req.body.jobId,
       applicantName: req.body.applicantName.trim(),
       qualification: req.body.qualification?.trim() || '',
@@ -242,19 +251,10 @@ const applyForJob = async (req, res) => {
       resume: resumeUrl
     });
 
-    await application.save();
-
     res.status(201).json({
       success: true,
       message: 'Application submitted successfully',
-      application: {
-        _id: application._id,
-        jobId: application.jobId,
-        applicantName: application.applicantName,
-        email: application.email,
-        mobile: application.mobile,
-        appliedAt: application.createdAt
-      }
+      application
     });
 
   } catch (error) {
@@ -267,126 +267,53 @@ const applyForJob = async (req, res) => {
 };
 
 /* =========================================================
-   GET ALL APPLICATIONS (ADMIN)
+   GET APPLICATIONS
 ========================================================= */
+
 const getJobApplications = async (req, res) => {
   try {
+
     const applications = await JobApplication.find()
-      .populate({
-        path: "jobId",
-        select: "jobTitle",
-        strictPopulate: false
-      })
+      .populate('jobId', 'jobTitle')
       .sort({ createdAt: -1 });
 
-    res.status(200).json({
+    res.json({
       success: true,
-      applications: applications.map(app => ({
-        _id: app._id,
-        applicantName: app.applicantName,
-        email: app.email,
-        mobile: app.mobile,
-        resume: app.resume,
-        appliedAt: app.createdAt,
-        status: app.status || "pending",
-        jobId: app.jobId   // <-- populated object
-      }))
+      applications
     });
 
   } catch (error) {
-    console.error("❌ GET APPLICATIONS ERROR:", error);
     res.status(500).json({
       success: false,
-      message: "Failed to fetch applications"
+      message: 'Failed to fetch applications'
     });
   }
 };
 
-
 /* =========================================================
-   DELETE APPLICATION (ADMIN)
+   DELETE APPLICATION
 ========================================================= */
+
 const deleteJobApplication = async (req, res) => {
   try {
+
     const application = await JobApplication.findById(req.params.id);
     if (!application) {
-      return res.status(404).json({ success: false, message: 'Application not found' });
+      return res.status(404).json({ success: false });
     }
 
     await application.deleteOne();
 
-    res.json({ success: true, message: 'Application deleted' });
+    res.json({ success: true });
 
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: 'Failed to delete application',
-      error: error.message
-    });
+    res.status(500).json({ success: false });
   }
 };
+
 /* =========================================================
-   GET APPLICATIONS BY JOB ID (ADMIN)
+   EXPORTS
 ========================================================= */
-const getApplicationsByJob = async (req, res) => {
-  try {
-    const applications = await JobApplication.find({
-      jobId: req.params.jobId
-    })
-      .populate('jobId', 'jobTitle')
-      .sort({ createdAt: -1 });
-
-    res.status(200).json({
-      success: true,
-      applications
-    });
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: 'Failed to fetch job applications'
-    });
-  }
-};
-
-exports.updateApplicationStatus = async (req, res) => {
-  try {
-    const { status } = req.body;
-
-    const allowedStatus = ['pending', 'reviewed', 'shortlisted', 'rejected', 'hired'];
-    if (!allowedStatus.includes(status)) {
-      return res.status(400).json({
-        success: false,
-        message: 'Invalid status'
-      });
-    }
-
-    const application = await JobApplication.findByIdAndUpdate(
-      req.params.id,
-      { status },
-      { new: true }
-    );
-
-    if (!application) {
-      return res.status(404).json({
-        success: false,
-        message: 'Application not found'
-      });
-    }
-
-    res.json({
-      success: true,
-      message: 'Application status updated',
-      application
-    });
-
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({
-      success: false,
-      message: 'Server error'
-    });
-  }
-};
 
 module.exports = {
   getAllJobs,
@@ -396,8 +323,5 @@ module.exports = {
   deleteJob,
   applyForJob,
   getJobApplications,
-  getApplicationsByJob,
-  deleteJobApplication,
+  deleteJobApplication
 };
-
-

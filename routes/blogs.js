@@ -8,7 +8,7 @@ const { CloudinaryStorage } = require('multer-storage-cloudinary');
 const cloudinary = require('cloudinary').v2;
 
 /* =====================================
-   CLOUDINARY CONFIG (MUST BE FIRST)
+   CLOUDINARY CONFIG
 ===================================== */
 
 cloudinary.config({
@@ -18,7 +18,7 @@ cloudinary.config({
 });
 
 /* =====================================
-   MULTER STORAGE SETUP
+   MULTER STORAGE
 ===================================== */
 
 const storage = new CloudinaryStorage({
@@ -32,18 +32,18 @@ const storage = new CloudinaryStorage({
 const upload = multer({ storage });
 
 /* =====================================
-   PUBLIC STATIC ROUTES (SPECIFIC FIRST)
+   PUBLIC ROUTES (SPECIFIC FIRST)
 ===================================== */
 
 router.get('/featured', blogController.getFeaturedBlog);
 router.get('/related/:slug', blogController.getRelatedBlogs);
 router.post('/like/:id', blogController.likeBlog);
+router.post('/comment/:id', blogController.addComment); // ✅ moved here
 
 /* =====================================
    ADMIN ROUTES
 ===================================== */
 
-// ✅ Create blog (Image upload enabled)
 router.post(
     '/upload-image',
     adminAuth,
@@ -54,9 +54,11 @@ router.post(
             return res.status(400).json({ success: false });
         }
 
-        // Extra safety check
         if (!req.file.mimetype.startsWith('image/')) {
-            return res.status(400).json({ success: false, message: "Only images allowed" });
+            return res.status(400).json({
+                success: false,
+                message: "Only images allowed"
+            });
         }
 
         res.json({
@@ -66,17 +68,19 @@ router.post(
     }
 );
 
-// Get blog by ID (for admin edit)
+router.post(
+    '/',
+    adminAuth,
+    upload.single('image'),
+    blogController.createBlog
+);
+
 router.get('/id/:id', adminAuth, blogController.getBlogById);
-
-// Update blog (optional: image update later)
 router.put('/:id', adminAuth, blogController.updateBlog);
-
-// Delete blog
 router.delete('/:id', adminAuth, blogController.deleteBlog);
 
 /* =====================================
-   PUBLIC LIST ROUTE
+   PUBLIC LIST
 ===================================== */
 
 router.get('/', blogController.getBlogs);
