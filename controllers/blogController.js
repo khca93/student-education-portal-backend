@@ -3,7 +3,6 @@ const Blog = require('../models/Blog');
 // ================= CREATE BLOG =================
 exports.createBlog = async (req, res) => {
   try {
-
     const { title, content, category } = req.body;
 
     if (!title || !content) {
@@ -13,7 +12,7 @@ exports.createBlog = async (req, res) => {
       });
     }
 
-    // ✅ Get image from Cloudinary (if uploaded)
+    // Get image from Cloudinary (if uploaded)
     let image = '';
 
     if (req.file) {
@@ -22,6 +21,7 @@ exports.createBlog = async (req, res) => {
       image = req.body.imageUrl;
     }
 
+    // Generate unique slug
     let baseSlug = title
       .toLowerCase()
       .replace(/[^a-z0-9 ]/g, '')
@@ -35,7 +35,7 @@ exports.createBlog = async (req, res) => {
       counter++;
     }
 
-    // Duplicate check
+    // Generate meta data
     const metaTitle = title + " | Student Education Portal";
     const plainText = content.replace(/<[^>]*>/g, '');
     const metaDescription = plainText.substring(0, 150);
@@ -51,7 +51,6 @@ exports.createBlog = async (req, res) => {
     });
 
     res.json({ success: true, blog });
-
   } catch (error) {
     res.status(500).json({
       success: false,
@@ -63,7 +62,6 @@ exports.createBlog = async (req, res) => {
 // ================= GET ALL BLOGS (WITH PAGINATION) =================
 exports.getBlogs = async (req, res) => {
   try {
-
     const page = parseInt(req.query.page) || 1;
     const limit = 6;
     const skip = (page - 1) * limit;
@@ -99,17 +97,14 @@ exports.getBlogs = async (req, res) => {
       currentPage: page,
       totalPages: Math.ceil(total / limit)
     });
-
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
 };
 
 // ================= GET BLOG BY SLUG =================
-// ================= GET BLOG BY SLUG =================
 exports.getBlogBySlug = async (req, res) => {
   try {
-
     const blog = await Blog.findOneAndUpdate(
       { slug: req.params.slug },
       { $inc: { views: 1 } },
@@ -124,7 +119,6 @@ exports.getBlogBySlug = async (req, res) => {
     }
 
     res.json({ success: true, blog });
-
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
@@ -133,7 +127,6 @@ exports.getBlogBySlug = async (req, res) => {
 // ================= GET FEATURED BLOG (LATEST) =================
 exports.getFeaturedBlog = async (req, res) => {
   try {
-
     const blog = await Blog.findOne()
       .sort({ createdAt: -1 });
 
@@ -142,15 +135,14 @@ exports.getFeaturedBlog = async (req, res) => {
     }
 
     res.json({ success: true, blog });
-
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
 };
+
 // ================= GET RELATED BLOGS =================
 exports.getRelatedBlogs = async (req, res) => {
   try {
-
     const slug = req.params.slug;
 
     const currentBlog = await Blog.findOne({ slug });
@@ -173,7 +165,6 @@ exports.getRelatedBlogs = async (req, res) => {
       success: true,
       blogs: related
     });
-
   } catch (error) {
     res.status(500).json({
       success: false,
@@ -182,10 +173,9 @@ exports.getRelatedBlogs = async (req, res) => {
   }
 };
 
-// UPDATE BLOG
+// ================= UPDATE BLOG =================
 exports.updateBlog = async (req, res) => {
   try {
-
     const { title, content, category, image } = req.body;
 
     let updateData = {
@@ -211,7 +201,6 @@ exports.updateBlog = async (req, res) => {
       }
 
       updateData.slug = newSlug;
-
       updateData.metaTitle = title + " | Student Education Portal";
     }
 
@@ -231,16 +220,14 @@ exports.updateBlog = async (req, res) => {
     }
 
     res.json({ success: true, blog });
-
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
 };
 
-// DELETE BLOG
+// ================= DELETE BLOG =================
 exports.deleteBlog = async (req, res) => {
   try {
-
     const blog = await Blog.findByIdAndDelete(req.params.id);
 
     if (!blog) {
@@ -248,15 +235,14 @@ exports.deleteBlog = async (req, res) => {
     }
 
     res.json({ success: true });
-
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
 };
 
+// ================= LIKE BLOG =================
 exports.likeBlog = async (req, res) => {
   try {
-
     const blog = await Blog.findByIdAndUpdate(
       req.params.id,
       { $inc: { likes: 1 } },
@@ -268,15 +254,14 @@ exports.likeBlog = async (req, res) => {
     }
 
     res.json({ success: true, likes: blog.likes });
-
   } catch (error) {
     res.status(500).json({ success: false });
   }
 };
 
+// ================= GET BLOG BY ID =================
 exports.getBlogById = async (req, res) => {
   try {
-
     const blog = await Blog.findById(req.params.id);
 
     if (!blog) {
@@ -284,21 +269,28 @@ exports.getBlogById = async (req, res) => {
     }
 
     res.json({ success: true, blog });
-
   } catch (error) {
     res.status(500).json({ success: false });
   }
 };
+
 // ================= ADD COMMENT =================
 exports.addComment = async (req, res) => {
   try {
-
     const { name, message } = req.body;
 
     if (!name || !message) {
       return res.status(400).json({
         success: false,
         message: "Name and message required"
+      });
+    }
+
+    // Optional: Add spam prevention
+    if (message.length > 1000) {
+      return res.status(400).json({
+        success: false,
+        message: "Comment too long (max 1000 characters)"
       });
     }
 
@@ -323,7 +315,6 @@ exports.addComment = async (req, res) => {
       success: true,
       comments: blog.comments
     });
-
   } catch (error) {
     res.status(500).json({
       success: false,

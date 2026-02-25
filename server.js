@@ -4,11 +4,11 @@ const cors = require('cors');
 const dotenv = require('dotenv');
 const path = require('path');
 
-
 // Load environment variables
 dotenv.config();
 
 console.log("MONGO_URI =", process.env.MONGO_URI);
+
 // Import database connection
 const connectDB = require('./config/database');
 
@@ -17,17 +17,18 @@ const studentAuthRoutes = require('./routes/studentAuth');
 const adminAuthRoutes = require('./routes/adminAuth');
 const jobRoutes = require('./routes/jobs');
 const examPaperRoutes = require('./routes/examPapers');
-// Blog routes removed
+const blogRoutes = require('./routes/blogs');
+const sitemapRoute = require('./routes/sitemap');
 
 // Import controllers
 const { initializeAdmin } = require('./controllers/adminAuthController');
 
 const app = express();
 
+// Connect to database and initialize admin
 connectDB().then(() => {
   initializeAdmin();
 });
-
 
 // Middleware
 app.use(cors({
@@ -39,21 +40,26 @@ app.options('*', cors());
 app.use(express.json({ limit: '20mb' }));
 app.use(express.urlencoded({ extended: true, limit: '20mb' }));
 
+// Static files (if any)
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
-// Routes
+// ==================== ROUTES ====================
+// API Routes
 app.use('/api/student/auth', studentAuthRoutes);
 app.use('/api/admin/auth', adminAuthRoutes);
 app.use('/api/jobs', jobRoutes);
 app.use('/api/exam-papers', examPaperRoutes);
-
-const blogRoutes = require('./routes/blogs');
 app.use('/api/blogs', blogRoutes);
+
+// Sitemap route
+app.use('/sitemap.xml', sitemapRoute);
 
 // Root route (IMPORTANT for Render / Browser check)
 app.get('/', (req, res) => {
   res.json({
     success: true,
-    message: 'Student Education Portal Backend is Live 🚀'
+    message: 'Student Education Portal Backend is Live 🚀',
+    timestamp: new Date().toISOString()
   });
 });
 
@@ -66,6 +72,7 @@ app.get('/api/health', (req, res) => {
   });
 });
 
+// ==================== ERROR HANDLERS ====================
 // Global error handler
 app.use((err, req, res, next) => {
   console.error("GLOBAL ERROR:", err);
@@ -81,13 +88,11 @@ app.use((err, req, res, next) => {
   res.status(500).json({
     success: false,
     message: "Something went wrong!",
-    error: process.env.NODE_ENV === "development"
-      ? err.message
-      : "Internal server error"
+    error: process.env.NODE_ENV === "development" ? err.message : "Internal server error"
   });
 });
 
-// 404 handler
+// 404 handler (MUST BE LAST)
 app.use('*', (req, res) => {
   res.status(404).json({
     success: false,
@@ -95,11 +100,10 @@ app.use('*', (req, res) => {
   });
 });
 
-// Start server
+// ==================== START SERVER ====================
 const PORT = process.env.PORT || 10000;
 
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 Server running on port ${PORT}`);
+  console.log(`📝 Environment: ${process.env.NODE_ENV || 'development'}`);
 });
-const sitemapRoute = require('./routes/sitemap');
-app.use('/sitemap.xml', sitemapRoute);

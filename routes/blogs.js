@@ -10,7 +10,6 @@ const cloudinary = require('cloudinary').v2;
 /* =====================================
    CLOUDINARY CONFIG
 ===================================== */
-
 cloudinary.config({
     cloud_name: process.env.CLOUD_NAME,
     api_key: process.env.CLOUD_API_KEY,
@@ -20,7 +19,6 @@ cloudinary.config({
 /* =====================================
    MULTER STORAGE
 ===================================== */
-
 const storage = new CloudinaryStorage({
     cloudinary: cloudinary,
     params: {
@@ -34,24 +32,24 @@ const upload = multer({ storage });
 /* =====================================
    PUBLIC ROUTES (SPECIFIC FIRST)
 ===================================== */
-
 router.get('/featured', blogController.getFeaturedBlog);
 router.get('/related/:slug', blogController.getRelatedBlogs);
 router.post('/like/:id', blogController.likeBlog);
-router.post('/comment/:id', blogController.addComment); // ✅ moved here
+router.post('/comment/:id', blogController.addComment);
 
 /* =====================================
    ADMIN ROUTES
 ===================================== */
-
 router.post(
     '/upload-image',
     adminAuth,
     upload.single('image'),
     (req, res) => {
-
         if (!req.file) {
-            return res.status(400).json({ success: false });
+            return res.status(400).json({ 
+                success: false, 
+                message: "No file uploaded" 
+            });
         }
 
         if (!req.file.mimetype.startsWith('image/')) {
@@ -82,13 +80,11 @@ router.delete('/:id', adminAuth, blogController.deleteBlog);
 /* =====================================
    PUBLIC LIST
 ===================================== */
-
 router.get('/', blogController.getBlogs);
 
 /* =====================================
    DYNAMIC SLUG (ALWAYS LAST)
 ===================================== */
-
 router.get('/:slug', blogController.getBlogBySlug);
 
 module.exports = router;
