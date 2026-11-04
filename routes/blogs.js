@@ -59,6 +59,26 @@ router.get('/admin/all', adminAuth, blogController.getAdminBlogs);
 router.get('/admin/comments', adminAuth, blogController.getPendingComments);
 router.put('/admin/comments/:blogId/:commentId/approve', adminAuth, blogController.approveComment);
 router.delete('/admin/comments/:blogId/:commentId', adminAuth, blogController.deleteComment);
+router.get('/admin/revisions/:blogId', adminAuth, blogController.getRevisions);
+router.post('/admin/revisions/:revisionId/restore', adminAuth, blogController.restoreRevision);
+
+// Media library: images already uploaded to the Cloudinary 'blogs' folder.
+router.get('/admin/media', adminAuth, async (req, res) => {
+    try {
+        const result = await cloudinary.api.resources({
+            type: 'upload', resource_type: 'image', prefix: 'blogs/', max_results: 30,
+            ...(req.query.cursor ? { next_cursor: String(req.query.cursor) } : {})
+        });
+        res.json({
+            success: true,
+            images: result.resources.map((r) => ({ url: r.secure_url, publicId: r.public_id, width: r.width, height: r.height })),
+            nextCursor: result.next_cursor || null
+        });
+    } catch (error) {
+        console.error('Media library error:', error.message || error.error?.message);
+        res.status(500).json({ success: false, message: 'Could not load the media library' });
+    }
+});
 
 /* =====================================
    ADMIN ROUTES

@@ -1,4 +1,7 @@
 const Blog = require('../models/Blog');
+const BlogRevision = require('../models/BlogRevision');
+
+const MAX_REVISIONS = 20;
 const sanitizeHtml = require('sanitize-html');
 
 const cleanText = (value, max = 500) => String(value || '').replace(/[\u0000-\u001f\u007f]/g, ' ').trim().slice(0, max);
@@ -13,6 +16,11 @@ const safeUrl = (value) => {
     return ['https:', 'http:'].includes(parsed.protocol) && !parsed.username && !parsed.password ? parsed.toString() : '';
   } catch { return ''; }
 };
+// Headings may keep an id only when the editor's table of contents made it (toc-...).
+const keepTocId = (tagName, attribs) => {
+  const { id, ...rest } = attribs;
+  return { tagName, attribs: /^toc-[a-z0-9-]{1,80}$/.test(id || '') ? { ...rest, id } : rest };
+};
 const sanitizeArticle = (html) => sanitizeHtml(String(html || ''), {
   allowedTags: [
     'address', 'article', 'b', 'blockquote', 'br', 'caption', 'code', 'dd', 'del', 'div', 'dl', 'dt',
@@ -22,6 +30,7 @@ const sanitizeArticle = (html) => sanitizeHtml(String(html || ''), {
   ],
   allowedAttributes: {
     a: ['href', 'name', 'target', 'rel', 'title'],
+    h2: ['id'], h3: ['id'],
     img: ['src', 'alt', 'title', 'width', 'height', 'style', 'class'],
     iframe: ['src', 'width', 'height', 'title', 'allow', 'allowfullscreen', 'frameborder', 'loading', 'referrerpolicy'],
     '*': ['style', 'class', 'colspan', 'rowspan', 'scope']
@@ -48,10 +57,15 @@ const sanitizeArticle = (html) => sanitizeHtml(String(html || ''), {
   allowedIframeHostnames: ['www.youtube.com', 'www.youtube-nocookie.com'],
   transformTags: {
     a: sanitizeHtml.simpleTransform('a', { rel: 'noopener noreferrer' }, true),
-    iframe: (tagName, attribs) => ({ tagName, attribs: { ...attribs, loading: 'lazy', referrerpolicy: 'strict-origin-when-cross-origin' } })
+    iframe: (tagName, attribs) => ({ tagName, attribs: { ...attribs, loading: 'lazy', referrerpolicy: 'strict-origin-when-cross-origin' } }),
+    h2: keepTocId, h3: keepTocId
   }
 });
-const publishedFilter = { $or: [{ status: 'published' }, { status: { $exists: false } }] };
+// Public = published and publishedAt not in the future (scheduled posts appear on their date).
+const publishedFilter = () => ({ $and: [
+  { $or: [{ status: 'published' }, { status: { $exists: false } }] },
+  { $or: [{ publishedAt: { $lte: new Date() } }, { publishedAt: null }] }
+] });
 const approvedOnly = (comments) => (comments || []).filter((c) => c.approved !== false);
 const serializePublicBlog = (blog) => {
   if (!blog) return blog;
@@ -136,12 +150,11 @@ exports.getBlogs = async (req, res) => {
   try {
     const page = Math.max(1, parseInt(req.query.page, 10) || 1);
     const limit = Math.max(1, Math.min(parseInt(req.query.limit, 10) || 6, 100));
-    const filter = { ...publishedFilter };
+    const filter = publishedFilter();
     if (req.query.category && req.query.category !== 'all') filter.category = String(req.query.category);
     if (req.query.search) {
       const search = String(req.query.search).slice(0, 100).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-      filter.$and = [publishedFilter, { $or: [{ title: { $regex: search, $options: 'i' } }, { content: { $regex: search, $options: 'i' } }] }];
-      delete filter.$or;
+      filter.$and.push({ $or: [{ title: { $regex: search, $options: 'i' } }, { content: { $regex: search, $options: 'i' } }] });
     }
     const total = await Blog.countDocuments(filter);
     const blogs = await Blog.find(filter).sort({ publishedAt: -1, createdAt: -1 }).skip((page - 1) * limit).limit(limit).select('-comments');
@@ -158,14 +171,14 @@ exports.getAdminBlogs = async (req, res) => {
 
 exports.getCategories = async (req, res) => {
   try {
-    const categories = (await Blog.distinct('category', publishedFilter)).filter(Boolean).sort();
+    const categories = (await Blog.distinct('category', publishedFilter())).filter(Boolean).sort();
     res.json({ success: true, categories });
   } catch { res.status(500).json({ success: false, message: 'Failed to load categories' }); }
 };
 
 exports.getBlogBySlug = async (req, res) => {
   try {
-    const blog = await Blog.findOneAndUpdate({ slug: req.params.slug, ...publishedFilter }, { $inc: { views: 1 } }, { new: true });
+    const blog = await Blog.findOneAndUpdate({ slug: req.params.slug, ...publishedFilter() }, { $inc: { views: 1 } }, { new: true });
     if (!blog) return res.status(404).json({ success: false, message: 'Blog not found' });
     res.json({ success: true, blog: serializePublicBlog(blog) });
   } catch { res.status(500).json({ success: false, message: 'Failed to load blog' }); }
@@ -173,8 +186,8 @@ exports.getBlogBySlug = async (req, res) => {
 
 exports.getFeaturedBlog = async (req, res) => {
   try {
-    const featuredBlog = await Blog.findOne({ featured: true, ...publishedFilter }).sort({ publishedAt: -1, createdAt: -1 });
-    const blog = featuredBlog || await Blog.findOne(publishedFilter).sort({ publishedAt: -1, createdAt: -1 });
+    const featuredBlog = await Blog.findOne({ featured: true, ...publishedFilter() }).sort({ publishedAt: -1, createdAt: -1 });
+    const blog = featuredBlog || await Blog.findOne(publishedFilter()).sort({ publishedAt: -1, createdAt: -1 });
     res.json({ success: true, blog: serializeCard(blog) });
   }
   catch { res.status(500).json({ success: false, message: 'Failed to load featured blog' }); }
@@ -182,9 +195,9 @@ exports.getFeaturedBlog = async (req, res) => {
 
 exports.getRelatedBlogs = async (req, res) => {
   try {
-    const current = await Blog.findOne({ slug: req.params.slug, ...publishedFilter });
+    const current = await Blog.findOne({ slug: req.params.slug, ...publishedFilter() });
     if (!current) return res.status(404).json({ success: false, message: 'Blog not found' });
-    const blogs = await Blog.find({ category: current.category, slug: { $ne: current.slug }, ...publishedFilter }).sort({ publishedAt: -1, createdAt: -1 }).limit(3);
+    const blogs = await Blog.find({ category: current.category, slug: { $ne: current.slug }, ...publishedFilter() }).sort({ publishedAt: -1, createdAt: -1 }).limit(3);
     res.json({ success: true, blogs: blogs.map(serializeCard) });
   } catch { res.status(500).json({ success: false, message: 'Failed to load related blogs' }); }
 };
@@ -194,6 +207,8 @@ exports.updateBlog = async (req, res) => {
     const blog = await Blog.findById(req.params.id);
     if (!blog) return res.status(404).json({ success: false, message: 'Blog not found' });
     const data = normalizePayload({ ...blog.toObject(), ...req.body });
+    // Manual saves (revision: true) keep the previous version; auto-saves do not.
+    const keepRevision = req.body.revision === true && (blog.title !== data.title || blog.content !== data.content);
     if (req.file?.path) data.image = req.file.path;
     data.slug = await uniqueSlug(data.slug || blog.slug || slugify(data.title), blog._id);
     if (!data.metaTitle) data.metaTitle = `${data.title} | Student Education Portal`;
@@ -201,8 +216,10 @@ exports.updateBlog = async (req, res) => {
     if (!data.socialTitle) data.socialTitle = data.metaTitle;
     if (!data.socialDescription) data.socialDescription = data.metaDescription;
     if (!data.socialImage) data.socialImage = data.image;
+    const previous = { blogId: blog._id, title: blog.title, content: blog.content };
     Object.assign(blog, data);
     await blog.save();
+    if (keepRevision) await saveRevision(previous);
     res.json({ success: true, blog });
   } catch (error) {
     const invalid = error.message?.startsWith('A title') || error.message?.startsWith('Add article');
@@ -210,17 +227,47 @@ exports.updateBlog = async (req, res) => {
   }
 };
 
+const saveRevision = async (revision) => {
+  await BlogRevision.create(revision);
+  const old = await BlogRevision.find({ blogId: revision.blogId }).sort({ savedAt: -1 }).skip(MAX_REVISIONS).select('_id');
+  if (old.length) await BlogRevision.deleteMany({ _id: { $in: old.map((r) => r._id) } });
+};
+
+// shortcut: list includes content (max 20 rows); split into a detail route if articles get very large.
+exports.getRevisions = async (req, res) => {
+  try {
+    const revisions = await BlogRevision.find({ blogId: req.params.blogId }).sort({ savedAt: -1 }).limit(MAX_REVISIONS);
+    res.json({ success: true, revisions });
+  } catch { res.status(400).json({ success: false, message: 'Invalid blog ID' }); }
+};
+
+exports.restoreRevision = async (req, res) => {
+  try {
+    const revision = await BlogRevision.findById(req.params.revisionId);
+    if (!revision) return res.status(404).json({ success: false, message: 'Version not found' });
+    const blog = await Blog.findById(revision.blogId);
+    if (!blog) return res.status(404).json({ success: false, message: 'Blog not found' });
+    const previous = { blogId: blog._id, title: blog.title, content: blog.content };
+    blog.title = revision.title || blog.title;
+    blog.content = sanitizeArticle(revision.content);
+    await blog.save();
+    await saveRevision(previous);
+    res.json({ success: true, blog });
+  } catch { res.status(400).json({ success: false, message: 'Could not restore this version' }); }
+};
+
 exports.deleteBlog = async (req, res) => {
   try {
     const deleted = await Blog.findByIdAndDelete(req.params.id);
     if (!deleted) return res.status(404).json({ success: false, message: 'Blog not found' });
+    await BlogRevision.deleteMany({ blogId: deleted._id });
     res.json({ success: true });
   } catch { res.status(500).json({ success: false, message: 'Failed to delete blog' }); }
 };
 
 exports.likeBlog = async (req, res) => {
   try {
-    const blog = await Blog.findOneAndUpdate({ _id: req.params.id, ...publishedFilter }, { $inc: { likes: 1 } }, { new: true });
+    const blog = await Blog.findOneAndUpdate({ _id: req.params.id, ...publishedFilter() }, { $inc: { likes: 1 } }, { new: true });
     if (!blog) return res.status(404).json({ success: false });
     res.json({ success: true, likes: blog.likes });
   } catch { res.status(500).json({ success: false }); }
@@ -239,7 +286,7 @@ exports.addComment = async (req, res) => {
     const name = cleanText(req.body.name, 80);
     const message = cleanText(req.body.message, 1000);
     if (!name || !message) return res.status(400).json({ success: false, message: 'Name and message required' });
-    const blog = await Blog.findOne({ _id: req.params.id, ...publishedFilter });
+    const blog = await Blog.findOne({ _id: req.params.id, ...publishedFilter() });
     if (!blog) return res.status(404).json({ success: false, message: 'Blog not found' });
     blog.comments.push({ name, message, approved: false });
     await blog.save();
@@ -275,7 +322,7 @@ exports.deleteComment = async (req, res) => {
 const SITE = 'https://exampaper.khca.info';
 exports.shareBlog = async (req, res) => {
   try {
-    const blog = await Blog.findOne({ slug: String(req.params.slug), ...publishedFilter }).select('-content -comments');
+    const blog = await Blog.findOne({ slug: String(req.params.slug), ...publishedFilter() }).select('-content -comments');
     if (!blog) return res.redirect(302, SITE + '/blogs.html');
     const target = SITE + '/blog.html?slug=' + encodeURIComponent(blog.slug);
     const title = blog.socialTitle || blog.metaTitle || blog.title;
@@ -299,3 +346,4 @@ ${image ? `<meta property="og:image" content="${e(image)}"><meta name="twitter:i
 // Exported for tests.
 exports.sanitizeArticle = sanitizeArticle;
 exports.escapeHtml = escapeHtml;
+exports.publishedFilter = publishedFilter;
