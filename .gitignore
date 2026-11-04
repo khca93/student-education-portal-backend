@@ -9,3 +9,8 @@ uploads/*
 !uploads/jobs/.gitkeep
 !uploads/resumes/.gitkeep
 !uploads/temp/.gitkeep
+# Local environment variants and credential files
+.env.*
+!.env.example
+*.env
+Tokan.txt

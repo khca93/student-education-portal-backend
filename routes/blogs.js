@@ -23,11 +23,29 @@ const storage = new CloudinaryStorage({
     cloudinary: cloudinary,
     params: {
         folder: 'blogs',
-        allowed_formats: ['jpg', 'png', 'jpeg']
+        allowed_formats: ['jpg', 'png', 'jpeg', 'webp']
     }
 });
 
-const upload = multer({ storage });
+const upload = multer({
+    storage,
+    limits: { fileSize: 8 * 1024 * 1024, files: 1 },
+    fileFilter: (req, file, cb) => {
+        const allowed = ['image/jpeg', 'image/png', 'image/webp'];
+        if (!allowed.includes(file.mimetype)) {
+            const error = new Error('Only JPG, PNG, or WebP images are supported.');
+            error.code = 'INVALID_BLOG_IMAGE';
+            return cb(error);
+        }
+        cb(null, true);
+    }
+});
+const uploadBlogImage = (req, res, next) => upload.single('image')(req, res, (error) => {
+    if (error?.code === 'INVALID_BLOG_IMAGE') {
+        return res.status(400).json({ success: false, message: error.message });
+    }
+    next(error);
+});
 
 /* =====================================
    PUBLIC ROUTES (SPECIFIC FIRST)
@@ -36,6 +54,7 @@ router.get('/featured', blogController.getFeaturedBlog);
 router.get('/related/:slug', blogController.getRelatedBlogs);
 router.post('/like/:id', blogController.likeBlog);
 router.post('/comment/:id', blogController.addComment);
+router.get('/admin/all', adminAuth, blogController.getAdminBlogs);
 
 /* =====================================
    ADMIN ROUTES
@@ -43,19 +62,12 @@ router.post('/comment/:id', blogController.addComment);
 router.post(
     '/upload-image',
     adminAuth,
-    upload.single('image'),
+    uploadBlogImage,
     (req, res) => {
         if (!req.file) {
             return res.status(400).json({ 
                 success: false, 
                 message: "No file uploaded" 
-            });
-        }
-
-        if (!req.file.mimetype.startsWith('image/')) {
-            return res.status(400).json({
-                success: false,
-                message: "Only images allowed"
             });
         }
 
@@ -69,12 +81,12 @@ router.post(
 router.post(
     '/',
     adminAuth,
-    upload.single('image'),
+    uploadBlogImage,
     blogController.createBlog
 );
 
 router.get('/id/:id', adminAuth, blogController.getBlogById);
-router.put('/:id', adminAuth, blogController.updateBlog);
+router.put('/:id', adminAuth, uploadBlogImage, blogController.updateBlog);
 router.delete('/:id', adminAuth, blogController.deleteBlog);
 
 /* =====================================

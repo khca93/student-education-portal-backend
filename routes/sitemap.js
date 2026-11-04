@@ -7,7 +7,7 @@ const baseUrl = "https://exampaper.khca.info";
 router.get('/', async (req, res) => {
   try {
 
-    const blogs = await Blog.find().sort({ createdAt: -1 });
+    const blogs = await Blog.find({ $or: [{ status: 'published' }, { status: { $exists: false } }] }).sort({ publishedAt: -1, createdAt: -1 });
 
     let xml = `<?xml version="1.0" encoding="UTF-8"?>`;
     xml += `<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">`;

@@ -17,9 +17,24 @@ const blogSchema = new mongoose.Schema({
 
   content: {
     type: String,
-    required: true,
+    default: '',
     trim: true
   },
+
+  subtitle: { type: String, default: '', trim: true, maxlength: 240 },
+  excerpt: { type: String, default: '', trim: true, maxlength: 320 },
+  tags: { type: [String], default: [] },
+  authorName: { type: String, default: '', trim: true, maxlength: 120 },
+  publishedAt: { type: Date, default: null },
+  status: { type: String, enum: ['draft', 'published'], default: 'published', index: true },
+  featured: { type: Boolean, default: false, index: true },
+  focusKeyword: { type: String, default: '', trim: true, maxlength: 120 },
+  canonicalUrl: { type: String, default: '', trim: true, maxlength: 500 },
+  socialTitle: { type: String, default: '', trim: true, maxlength: 160 },
+  socialDescription: { type: String, default: '', trim: true, maxlength: 320 },
+  socialImage: { type: String, default: '', trim: true, maxlength: 1000 },
+  imageAlt: { type: String, default: '', trim: true, maxlength: 240 },
+  imageCaption: { type: String, default: '', trim: true, maxlength: 320 },
 
   category: {
     type: String,
