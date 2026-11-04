@@ -51,12 +51,23 @@ const sanitizeArticle = (html) => sanitizeHtml(String(html || ''), {
     iframe: (tagName, attribs) => ({ tagName, attribs: { ...attribs, loading: 'lazy', referrerpolicy: 'strict-origin-when-cross-origin' } })
   }
 });
+const publishedFilter = { $or: [{ status: 'published' }, { status: { $exists: false } }] };
+const approvedOnly = (comments) => (comments || []).filter((c) => c.approved !== false);
 const serializePublicBlog = (blog) => {
   if (!blog) return blog;
   const result = typeof blog.toObject === 'function' ? blog.toObject() : { ...blog };
   result.content = sanitizeArticle(result.content);
+  result.comments = approvedOnly(result.comments);
   return result;
 };
+// List/card shape: no article body, no comments.
+const serializeCard = (blog) => {
+  if (!blog) return blog;
+  const { content, comments, ...card } = blog.toObject();
+  card.excerpt = card.excerpt || sanitizeHtml(String(content || ''), { allowedTags: [], allowedAttributes: {} }).replace(/\s+/g, ' ').trim().slice(0, 160);
+  return card;
+};
+const escapeHtml = (value) => String(value || '').replace(/[&<>"']/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
 
 const normalizePayload = (body) => {
   const content = sanitizeArticle(body.content);
@@ -125,16 +136,16 @@ exports.getBlogs = async (req, res) => {
   try {
     const page = Math.max(1, parseInt(req.query.page, 10) || 1);
     const limit = Math.max(1, Math.min(parseInt(req.query.limit, 10) || 6, 100));
-    const filter = { $or: [{ status: 'published' }, { status: { $exists: false } }] };
-    if (req.query.category && req.query.category !== 'all') filter.category = req.query.category;
+    const filter = { ...publishedFilter };
+    if (req.query.category && req.query.category !== 'all') filter.category = String(req.query.category);
     if (req.query.search) {
       const search = String(req.query.search).slice(0, 100).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-      filter.$and = [{ $or: [{ status: 'published' }, { status: { $exists: false } }] }, { $or: [{ title: { $regex: search, $options: 'i' } }, { content: { $regex: search, $options: 'i' } }] }];
+      filter.$and = [publishedFilter, { $or: [{ title: { $regex: search, $options: 'i' } }, { content: { $regex: search, $options: 'i' } }] }];
       delete filter.$or;
     }
     const total = await Blog.countDocuments(filter);
-    const blogs = await Blog.find(filter).sort({ publishedAt: -1, createdAt: -1 }).skip((page - 1) * limit).limit(limit);
-    res.json({ success: true, blogs: blogs.map(serializePublicBlog), currentPage: page, totalPages: Math.ceil(total / limit) });
+    const blogs = await Blog.find(filter).sort({ publishedAt: -1, createdAt: -1 }).skip((page - 1) * limit).limit(limit).select('-comments');
+    res.json({ success: true, blogs: blogs.map(serializeCard), currentPage: page, totalPages: Math.ceil(total / limit) });
   } catch (error) { res.status(500).json({ success: false, message: 'Failed to load blogs' }); }
 };
 
@@ -145,7 +156,13 @@ exports.getAdminBlogs = async (req, res) => {
   } catch { res.status(500).json({ success: false, message: 'Failed to load blog drafts' }); }
 };
 
-const publishedFilter = { $or: [{ status: 'published' }, { status: { $exists: false } }] };
+exports.getCategories = async (req, res) => {
+  try {
+    const categories = (await Blog.distinct('category', publishedFilter)).filter(Boolean).sort();
+    res.json({ success: true, categories });
+  } catch { res.status(500).json({ success: false, message: 'Failed to load categories' }); }
+};
+
 exports.getBlogBySlug = async (req, res) => {
   try {
     const blog = await Blog.findOneAndUpdate({ slug: req.params.slug, ...publishedFilter }, { $inc: { views: 1 } }, { new: true });
@@ -158,7 +175,7 @@ exports.getFeaturedBlog = async (req, res) => {
   try {
     const featuredBlog = await Blog.findOne({ featured: true, ...publishedFilter }).sort({ publishedAt: -1, createdAt: -1 });
     const blog = featuredBlog || await Blog.findOne(publishedFilter).sort({ publishedAt: -1, createdAt: -1 });
-    res.json({ success: true, blog: serializePublicBlog(blog) });
+    res.json({ success: true, blog: serializeCard(blog) });
   }
   catch { res.status(500).json({ success: false, message: 'Failed to load featured blog' }); }
 };
@@ -168,7 +185,7 @@ exports.getRelatedBlogs = async (req, res) => {
     const current = await Blog.findOne({ slug: req.params.slug, ...publishedFilter });
     if (!current) return res.status(404).json({ success: false, message: 'Blog not found' });
     const blogs = await Blog.find({ category: current.category, slug: { $ne: current.slug }, ...publishedFilter }).sort({ publishedAt: -1, createdAt: -1 }).limit(3);
-    res.json({ success: true, blogs: blogs.map(serializePublicBlog) });
+    res.json({ success: true, blogs: blogs.map(serializeCard) });
   } catch { res.status(500).json({ success: false, message: 'Failed to load related blogs' }); }
 };
 
@@ -224,8 +241,61 @@ exports.addComment = async (req, res) => {
     if (!name || !message) return res.status(400).json({ success: false, message: 'Name and message required' });
     const blog = await Blog.findOne({ _id: req.params.id, ...publishedFilter });
     if (!blog) return res.status(404).json({ success: false, message: 'Blog not found' });
-    blog.comments.push({ name, message });
+    blog.comments.push({ name, message, approved: false });
     await blog.save();
-    res.json({ success: true, comments: blog.comments });
+    res.json({ success: true, message: 'Thanks! Your comment will appear after approval.', comments: approvedOnly(blog.comments) });
   } catch { res.status(500).json({ success: false, message: 'Server error' }); }
 };
+
+exports.getPendingComments = async (req, res) => {
+  try {
+    const blogs = await Blog.find({ 'comments.approved': false }).select('title slug comments');
+    const comments = blogs.flatMap((blog) => blog.comments.filter((c) => c.approved === false)
+      .map((c) => ({ _id: c._id, blogId: blog._id, blogTitle: blog.title, name: c.name, message: c.message, createdAt: c.createdAt })));
+    res.json({ success: true, comments });
+  } catch { res.status(500).json({ success: false, message: 'Failed to load comments' }); }
+};
+
+exports.approveComment = async (req, res) => {
+  try {
+    const result = await Blog.updateOne({ _id: req.params.blogId, 'comments._id': req.params.commentId }, { $set: { 'comments.$.approved': true } });
+    if (!result.matchedCount) return res.status(404).json({ success: false, message: 'Comment not found' });
+    res.json({ success: true });
+  } catch { res.status(400).json({ success: false, message: 'Invalid comment ID' }); }
+};
+
+exports.deleteComment = async (req, res) => {
+  try {
+    const result = await Blog.updateOne({ _id: req.params.blogId }, { $pull: { comments: { _id: req.params.commentId } } });
+    if (!result.modifiedCount) return res.status(404).json({ success: false, message: 'Comment not found' });
+    res.json({ success: true });
+  } catch { res.status(400).json({ success: false, message: 'Invalid comment ID' }); }
+};
+
+const SITE = 'https://exampaper.khca.info';
+exports.shareBlog = async (req, res) => {
+  try {
+    const blog = await Blog.findOne({ slug: String(req.params.slug), ...publishedFilter }).select('-content -comments');
+    if (!blog) return res.redirect(302, SITE + '/blogs.html');
+    const target = SITE + '/blog.html?slug=' + encodeURIComponent(blog.slug);
+    const title = blog.socialTitle || blog.metaTitle || blog.title;
+    const description = blog.socialDescription || blog.metaDescription || blog.excerpt || '';
+    const image = blog.socialImage || blog.image || '';
+    // og:url must be this page: Facebook re-scrapes og:url, and blog.html has no server-side tags.
+    const self = 'https://' + req.get('host') + '/share/' + encodeURIComponent(blog.slug);
+    const e = escapeHtml;
+    res.set('Cache-Control', 'public, max-age=600').type('html').send(`<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"><title>${e(title)}</title>
+<meta name="description" content="${e(description)}">
+<meta property="og:type" content="article"><meta property="og:url" content="${e(self)}">
+<meta property="og:title" content="${e(title)}"><meta property="og:description" content="${e(description)}">
+${image ? `<meta property="og:image" content="${e(image)}"><meta name="twitter:image" content="${e(image)}">` : ''}
+<meta name="twitter:card" content="summary_large_image"><meta name="twitter:title" content="${e(title)}"><meta name="twitter:description" content="${e(description)}">
+<link rel="canonical" href="${e(target)}"><meta http-equiv="refresh" content="0;url=${e(target)}">
+</head><body><p><a href="${e(target)}">${e(title)}</a></p></body></html>`);
+  } catch { res.status(500).send('Error'); }
+};
+
+// Exported for tests.
+exports.sanitizeArticle = sanitizeArticle;
+exports.escapeHtml = escapeHtml;

@@ -81,6 +81,8 @@ const blogSchema = new mongoose.Schema({
         required: true,
         trim: true
       },
+      // no default: old comments have no field and count as approved
+      approved: Boolean,
       createdAt: {
         type: Date,
         default: Date.now

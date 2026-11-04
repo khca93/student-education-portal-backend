@@ -54,7 +54,11 @@ router.get('/featured', blogController.getFeaturedBlog);
 router.get('/related/:slug', blogController.getRelatedBlogs);
 router.post('/like/:id', blogController.likeBlog);
 router.post('/comment/:id', blogController.addComment);
+router.get('/categories', blogController.getCategories);
 router.get('/admin/all', adminAuth, blogController.getAdminBlogs);
+router.get('/admin/comments', adminAuth, blogController.getPendingComments);
+router.put('/admin/comments/:blogId/:commentId/approve', adminAuth, blogController.approveComment);
+router.delete('/admin/comments/:blogId/:commentId', adminAuth, blogController.deleteComment);
 
 /* =====================================
    ADMIN ROUTES

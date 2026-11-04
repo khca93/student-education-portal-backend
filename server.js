@@ -7,8 +7,6 @@ const path = require('path');
 // Load environment variables
 dotenv.config();
 
-console.log("MONGO_URI =", process.env.MONGO_URI);
-
 // Import database connection
 const connectDB = require('./config/database');
 
@@ -50,6 +48,9 @@ app.use('/api/admin/auth', adminAuthRoutes);
 app.use('/api/jobs', jobRoutes);
 app.use('/api/exam-papers', examPaperRoutes);
 app.use('/api/blogs', blogRoutes);
+
+// Share page with real OG tags for WhatsApp/Facebook bots
+app.get('/share/:slug', require('./controllers/blogController').shareBlog);
 
 // Sitemap route
 app.use('/sitemap.xml', sitemapRoute);
