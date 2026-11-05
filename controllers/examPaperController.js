@@ -280,6 +280,10 @@ const getExamStructure = async (req, res) => {
       'Competitive': {
         classes: ['SSC CGL', 'Railway', 'Banking', 'UPSC', 'MPSC', 'Defense'],
         subjects: ['General Knowledge', 'Quantitative Aptitude', 'Reasoning', 'English', 'Current Affairs']
+      },
+      'Government Exams': {
+        classes: ['SSC CGL', 'Railway', 'Banking', 'UPSC', 'MPSC', 'Defense'],
+        subjects: ['General Knowledge', 'Quantitative Aptitude', 'Reasoning', 'English', 'Current Affairs']
       }
     }
   });

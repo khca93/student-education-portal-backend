@@ -4,7 +4,7 @@ const examPaperSchema = new mongoose.Schema({
   category: {
     type: String,
     required: [true, 'Category is required'],
-    enum: ['10th SSC', '10th CBSE', '12th HSC', '12th CBSE', 'Graduation', 'Competitive']
+    enum: ['10th SSC', '10th CBSE', '12th HSC', '12th CBSE', 'Graduation', 'Competitive', 'Government Exams']
 
   },
   class: {
