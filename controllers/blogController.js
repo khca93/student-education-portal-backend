@@ -66,18 +66,22 @@ const publishedFilter = () => ({ $and: [
   { $or: [{ status: 'published' }, { status: { $exists: false } }] },
   { $or: [{ publishedAt: { $lte: new Date() } }, { publishedAt: null }] }
 ] });
+// ~200 words per minute; tags stripped so markup does not count.
+const readMinutes = (html) => Math.max(1, Math.ceil(sanitizeHtml(String(html || ''), { allowedTags: [], allowedAttributes: {} }).split(/\s+/).filter(Boolean).length / 200));
 const approvedOnly = (comments) => (comments || []).filter((c) => c.approved !== false);
 const serializePublicBlog = (blog) => {
   if (!blog) return blog;
   const result = typeof blog.toObject === 'function' ? blog.toObject() : { ...blog };
   result.content = sanitizeArticle(result.content);
   result.comments = approvedOnly(result.comments);
+  result.readTime = readMinutes(result.content);
   return result;
 };
 // List/card shape: no article body, no comments.
 const serializeCard = (blog) => {
   if (!blog) return blog;
   const { content, comments, ...card } = blog.toObject();
+  card.readTime = readMinutes(content);
   card.excerpt = card.excerpt || sanitizeHtml(String(content || ''), { allowedTags: [], allowedAttributes: {} }).replace(/\s+/g, ' ').trim().slice(0, 160);
   return card;
 };
@@ -346,4 +350,5 @@ ${image ? `<meta property="og:image" content="${e(image)}"><meta name="twitter:i
 // Exported for tests.
 exports.sanitizeArticle = sanitizeArticle;
 exports.escapeHtml = escapeHtml;
+exports.readMinutes = readMinutes;
 exports.publishedFilter = publishedFilter;

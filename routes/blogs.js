@@ -47,6 +47,9 @@ const uploadBlogImage = (req, res, next) => upload.single('image')(req, res, (er
     next(error);
 });
 
+// Publish/update must show at once: browsers and proxies revalidate every blog GET.
+router.use((req, res, next) => { if (req.method === 'GET') res.set('Cache-Control', 'no-cache'); next(); });
+
 /* =====================================
    PUBLIC ROUTES (SPECIFIC FIRST)
 ===================================== */

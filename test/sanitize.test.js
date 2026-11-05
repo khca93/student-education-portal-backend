@@ -1,6 +1,6 @@
 const assert = require('node:assert');
 const sift = require('sift'); // mongoose's own query matcher, used here to run filters in memory
-const { sanitizeArticle, escapeHtml, publishedFilter } = require('../controllers/blogController');
+const { sanitizeArticle, escapeHtml, publishedFilter, readMinutes } = require('../controllers/blogController');
 
 const out = sanitizeArticle(
   '<p>Hi</p><script>alert(1)</script>' +
@@ -42,3 +42,6 @@ assert.ok(!isPublic({ status: 'published', publishedAt: new Date(Date.now() + da
 assert.ok(!isPublic({ status: 'draft', publishedAt: null }), 'draft is hidden');
 
 console.log('sanitize tests passed');
+
+assert.strictEqual(readMinutes(''), 1, 'empty article reads in 1 min');
+assert.strictEqual(readMinutes('<p>' + 'word '.repeat(401) + '</p>'), 3, '401 words = 3 min');
